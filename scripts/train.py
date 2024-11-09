@@ -11,6 +11,7 @@ from src.data.item_stats import get_item_stats
 from src.metrics import calc_user_auc
 from src.models.als import ALSModel
 from src.models.als_item import ALSSource
+from src.models.lightfm import LFMModel
 from src.data.preprocessing import load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share
 
 
@@ -159,11 +160,17 @@ def main(data_dir: Path):
         regularization = 0.07702668794141683
         n_factors = 96
 
+        lfm_n_features = 96
+        lfm_n_epochs = 10
+
         mlflow.log_params({
             "als_iterations": iterations,
             "als_alpha": alpha,
             "als_regularization": regularization,
             "als_n_factors": n_factors,
+
+            "lfm_n_features": lfm_n_features,
+            "lfm_n_epochs": lfm_n_epochs,
         })
 
         models_like = {
@@ -182,6 +189,12 @@ def main(data_dir: Path):
                 n_factors=n_factors,
                 predict_col_name="predict_als_source_like"
             ),
+            "lfm_item_like": LFMModel(
+                n_features=lfm_n_features, 
+                n_epochs=30, 
+                verbose=0,
+                predict_col_name="predict_lfm_item_like",
+            )
         }
 
         models_like_book_share = {
@@ -200,6 +213,12 @@ def main(data_dir: Path):
                 n_factors=n_factors,
                 predict_col_name="predict_als_source_like_book_share"
             ),
+            "lfm_item_like_book_share": LFMModel(
+                n_features=lfm_n_features, 
+                n_epochs=30, 
+                verbose=0,
+                predict_col_name="predict_lfm_item_like_book_share",
+            )
         }
 
         predicts = {
@@ -307,7 +326,15 @@ def main(data_dir: Path):
         cb_model.fit(train_df_cb_final[feature_columns], train_df_cb_final["target"], group_id=train_df_cb_final["user_id"])
         test_predict = cb_model.predict(test_df_final[feature_columns])
 
-        als_columns = ['predict_als_item_like', 'predict_als_source_like', 'predict_als_item_like_book_share', 'predict_als_source_like_book_share']
+        als_columns = [
+            'predict_als_item_like', 
+            'predict_als_source_like', 
+            'predict_als_item_like_book_share', 
+            'predict_als_source_like_book_share'
+            # lfm
+            "predict_lfm_item_like",
+            "predict_lfm_item_like_book_share",
+        ]
 
         test_df_final_prediction = (
             pl.from_pandas(test_df_final[["user_id", "target", "item_id", *als_columns]])
