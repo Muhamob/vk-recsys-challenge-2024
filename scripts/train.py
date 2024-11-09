@@ -1,11 +1,13 @@
 from datetime import datetime
+import os
 from pathlib import Path
-import mlflow
+import threadpoolctl
 
 import polars as pl
 from tqdm import tqdm
 from catboost import CatBoostRanker
 import click
+import mlflow
 
 from src.data.item_stats import get_item_stats
 from src.metrics import calc_user_auc
@@ -13,6 +15,10 @@ from src.models.als import ALSModel
 from src.models.als_item import ALSSource
 from src.models.lightfm import LFMModel
 from src.data.preprocessing import load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share
+
+
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+threadpoolctl.threadpool_limits(1, "blas")
 
 
 def calc_mean_embedding(embeddings: pl.Series):
@@ -330,7 +336,7 @@ def main(data_dir: Path):
             'predict_als_item_like', 
             'predict_als_source_like', 
             'predict_als_item_like_book_share', 
-            'predict_als_source_like_book_share'
+            'predict_als_source_like_book_share',
             # lfm
             "predict_lfm_item_like",
             "predict_lfm_item_like_book_share",
