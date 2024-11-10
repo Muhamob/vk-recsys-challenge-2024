@@ -1,8 +1,7 @@
 from pathlib import Path
+
 import polars as pl
-from implicit.als import AlternatingLeastSquares
 from rectools.models.lightfm import LightFM, LightFMWrapperModel
-from rectools import Columns
 from rectools.dataset import Dataset
 
 from src.logger import logger
@@ -59,6 +58,12 @@ class LFMModel(BaseMatrixFactorization):
         items_meta_df_flatten: pl.DataFrame | None = None,
         users_meta_df_flatten: pl.DataFrame | None = None,
     ):
+        load_cache_result = self._try_load_cache(train_df, items_meta_df_flatten, users_meta_df_flatten)
+        if load_cache_result:
+            return self
+        
+        assert self.model is not None
+        
         additional_params = {}
 
         if items_meta_df_flatten is not None:
@@ -87,6 +92,9 @@ class LFMModel(BaseMatrixFactorization):
         self.is_fitted = self.model.is_fitted
 
         del self.model
+        self.model = None
+
+        self._save_cache(train_df, items_meta_df_flatten, users_meta_df_flatten)
 
         return self
     

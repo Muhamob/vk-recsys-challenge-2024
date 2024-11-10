@@ -12,8 +12,9 @@ import mlflow
 from src.data.item_stats import get_item_stats
 from src.metrics import calc_user_auc
 from src.models.als import ALSModel
-from src.models.als_item import ALSSource
+from models.als_source import ALSSource
 from src.models.lightfm import LFMModel
+from src.models.lightfm_source import LightFMSource
 from src.data.preprocessing import load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share
 
 
@@ -169,6 +170,9 @@ def main(data_dir: Path):
         lfm_n_features = 96
         lfm_n_epochs = 10
 
+        als_cache_dir = data_dir / "cache/models/als"
+        lfm_cache_dir = data_dir / "cache/models/lightfm"
+
         mlflow.log_params({
             "als_iterations": iterations,
             "als_alpha": alpha,
@@ -185,7 +189,8 @@ def main(data_dir: Path):
                 alpha=alpha,
                 regularization=regularization,
                 n_factors=n_factors,
-                predict_col_name="predict_als_item_like"
+                predict_col_name="predict_als_item_like",
+                cache_dir=als_cache_dir,
             ),
             "als_source_like": ALSSource(
                 items_meta_df=items_meta_df,
@@ -193,13 +198,23 @@ def main(data_dir: Path):
                 alpha=alpha,
                 regularization=regularization,
                 n_factors=n_factors,
-                predict_col_name="predict_als_source_like"
+                predict_col_name="predict_als_source_like",
+                cache_dir=als_cache_dir,
             ),
             "lfm_item_like": LFMModel(
                 n_features=lfm_n_features, 
                 n_epochs=30, 
                 verbose=0,
                 predict_col_name="predict_lfm_item_like",
+                cache_dir=lfm_cache_dir,
+            ),
+            "lfm_source_like": LightFMSource(
+                items_meta_df=items_meta_df,
+                n_features=lfm_n_features, 
+                n_epochs=30, 
+                verbose=0,
+                predict_col_name="predict_lfm_source_like",
+                cache_dir=lfm_cache_dir,
             )
         }
 
@@ -209,7 +224,8 @@ def main(data_dir: Path):
                 alpha=alpha,
                 regularization=regularization,
                 n_factors=n_factors,
-                predict_col_name="predict_als_item_like_book_share"
+                predict_col_name="predict_als_item_like_book_share",
+                cache_dir=als_cache_dir,
             ),
             "als_source_like_book_share": ALSSource(
                 items_meta_df=items_meta_df,
@@ -217,13 +233,23 @@ def main(data_dir: Path):
                 alpha=alpha,
                 regularization=regularization,
                 n_factors=n_factors,
-                predict_col_name="predict_als_source_like_book_share"
+                predict_col_name="predict_als_source_like_book_share",
+                cache_dir=als_cache_dir,
             ),
             "lfm_item_like_book_share": LFMModel(
                 n_features=lfm_n_features, 
                 n_epochs=30, 
                 verbose=0,
                 predict_col_name="predict_lfm_item_like_book_share",
+                cache_dir=lfm_cache_dir,
+            ),
+            "lfm_source_like_book_share": LightFMSource(
+                items_meta_df=items_meta_df,
+                n_features=lfm_n_features, 
+                n_epochs=30, 
+                verbose=0,
+                predict_col_name="predict_lfm_source_like_book_share",
+                cache_dir=lfm_cache_dir,
             )
         }
 

@@ -1,41 +1,35 @@
 from pathlib import Path
 import polars as pl
 
-from src.models.als import ALSModel
+from src.models.lightfm import LFMModel
 from src.logger import logger
 
 
-class ALSSource(ALSModel):
+class LightFMSource(LFMModel):
     def __init__(
         self, 
         items_meta_df: pl.DataFrame,
-        iterations: int = 10,
-        alpha: float = 10,
-        regularization: float = 0.01,
-        n_factors: int = 64,
-        fit_features_together: bool = False,
-        use_gpu: bool = False,
-        num_threads: int = 8,
-        random_state: int = 42,
+        n_features: int = 10,
+        n_epochs: int = 10,
+        loss: str = "bpr",
         predict_col_name: str = "predict",
         cold_predict: float = -1.0,
+        verbose: int = 0,
+        random_state: int = 42,
         cache_dir: Path | None = None,
     ):
         super().__init__(
-            iterations=iterations,
-            alpha=alpha,
-            regularization=regularization,
-            n_factors=n_factors,
-            fit_features_together=fit_features_together,
-            use_gpu=use_gpu,
-            num_threads=num_threads,
-            random_state=random_state,
+            n_features=n_features,
+            n_epochs=n_epochs,
+            loss=loss,
             predict_col_name=predict_col_name,
             cold_predict=cold_predict,
+            verbose=verbose,
+            random_state=random_state,
             cache_dir=cache_dir,
         )
 
-        self.items_meta_df = items_meta_df
+        self.items_meta_df = items_meta_df.select("item_id", "source_id")
 
     def fit(
         self, 
@@ -48,7 +42,7 @@ class ALSSource(ALSModel):
         
         train_df = (
             train_df
-            .join(self.items_meta_df.select("item_id", "source_id"), how="inner", on="item_id")
+            .join(self.items_meta_df, how="inner", on="item_id")
             .drop("item_id")
             .rename({"source_id": "item_id"})
         )
@@ -59,7 +53,7 @@ class ALSSource(ALSModel):
         logger.debug(f"Input df columns: {pairs_df.columns}")
         pairs_source_id = (
             pairs_df
-            .join(self.items_meta_df.select("item_id", "source_id"), how="left", on="item_id")
+            .join(self.items_meta_df, how="left", on="item_id")
         )
 
         uniq_source_pairs_df = (

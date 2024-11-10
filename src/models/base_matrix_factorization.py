@@ -74,8 +74,8 @@ class BaseMatrixFactorization:
 
         if cache_path is not None:
             self.dump(cache_path)
-
-        logger.debug("Cannot save cache, cache_path is None")
+        else:
+            logger.debug("Cannot save cache, cache_path is None")
 
     def _get_cache_path(self, hash_value: str) -> Path | None:
         if self.cache_dir is None:
