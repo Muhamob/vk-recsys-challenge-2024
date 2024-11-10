@@ -333,6 +333,7 @@ def train(data_dir: Path):
             source_stats,
             items_meta_df,
             train_df_cb_sim_features,
+            users_meta_df=users_meta_df,
         ).with_columns(
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
         ).to_pandas()
@@ -343,7 +344,8 @@ def train(data_dir: Path):
             item_stats,
             source_stats,
             items_meta_df,
-            test_df_sim_features
+            test_df_sim_features,
+            users_meta_df=users_meta_df
         ).with_columns(
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
         ).to_pandas()
@@ -354,7 +356,8 @@ def train(data_dir: Path):
             item_stats,
             source_stats,
             items_meta_df,
-            test_pairs_sim_features
+            test_pairs_sim_features,
+            users_meta_df=users_meta_df
         ).to_pandas()
 
         feature_columns = [c for c in test_pairs_final.columns if c not in ("user_id", "item_id")]
