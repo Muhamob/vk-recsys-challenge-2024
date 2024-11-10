@@ -275,7 +275,14 @@ def train(data_dir: Path):
 
         for model_name, model in models_like.items():
             print(model_name)
-            model.fit(train_als_like_item)
+            if "source" not in model_name:
+                model.fit(
+                    train_als_like_item, 
+                    items_meta_df_flatten=items_meta_df_flatten, 
+                    users_meta_df_flatten=users_meta_df_flatten
+                )
+            else:
+                model.fit(train_als_like_item)
 
             predicts["train_df_cb"] = (
                 predicts["train_df_cb"]
