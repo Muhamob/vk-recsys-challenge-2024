@@ -1,3 +1,4 @@
+from pathlib import Path
 import polars as pl
 
 from src.models.als import ALSModel
@@ -18,6 +19,7 @@ class ALSSource(ALSModel):
         random_state: int = 42,
         predict_col_name: str = "predict",
         cold_predict: float = -1.0,
+        cache_dir: Path | None = None,
     ):
         super().__init__(
             iterations=iterations,
@@ -30,6 +32,7 @@ class ALSSource(ALSModel):
             random_state=random_state,
             predict_col_name=predict_col_name,
             cold_predict=cold_predict,
+            cache_dir=cache_dir,
         )
 
         self.items_meta_df = items_meta_df

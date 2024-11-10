@@ -1,13 +1,15 @@
+from pathlib import Path
+
 import polars as pl
 from implicit.als import AlternatingLeastSquares
 from rectools.models import ImplicitALSWrapperModel
-from rectools import Columns
 from rectools.dataset import Dataset
 
 from src.logger import logger
+from src.models.base_matrix_factorization import BaseMatrixFactorization
 
 
-class ALSModel:
+class ALSModel(BaseMatrixFactorization):
     def __init__(
         self,
         iterations: int = 10,
@@ -19,7 +21,8 @@ class ALSModel:
         num_threads: int = 8,
         random_state: int = 42,
         predict_col_name: str = "predict",
-        cold_predict: float = -1.0
+        cold_predict: float = -1.0,
+        cache_dir: Path | None = None
     ):
         self.iterations = iterations
         self.alpha = alpha
@@ -31,6 +34,20 @@ class ALSModel:
         self.random_state = random_state
         self.predict_col_name = predict_col_name
         self.cold_predict = cold_predict
+
+        super().__init__(
+            cache_dir=cache_dir, 
+            iterations=iterations,
+            alpha=alpha,
+            regularization=regularization,
+            n_factors=n_factors,
+            fit_features_together=fit_features_together,
+            use_gpu=use_gpu,
+            num_threads=num_threads,
+            random_state=random_state,
+            predict_col_name=predict_col_name,
+            cold_predict=cold_predict,
+        )
 
         self.model = ImplicitALSWrapperModel(
             AlternatingLeastSquares(
@@ -56,6 +73,10 @@ class ALSModel:
         items_meta_df_flatten: pl.DataFrame | None = None,
         users_meta_df_flatten: pl.DataFrame | None = None,
     ):
+        load_cache_result = self._try_load_cache(train_df, items_meta_df_flatten, users_meta_df_flatten)
+        if load_cache_result:
+            return self
+
         additional_params = {}
 
         if items_meta_df_flatten is not None:
@@ -81,6 +102,8 @@ class ALSModel:
         self.model.fit(dataset)
 
         self.is_fitted = self.model.is_fitted
+
+        self._save_cache(train_df, items_meta_df_flatten, users_meta_df_flatten)
 
         return self
     

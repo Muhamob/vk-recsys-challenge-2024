@@ -1,3 +1,4 @@
+from pathlib import Path
 import polars as pl
 from implicit.als import AlternatingLeastSquares
 from rectools.models.lightfm import LightFM, LightFMWrapperModel
@@ -5,9 +6,10 @@ from rectools import Columns
 from rectools.dataset import Dataset
 
 from src.logger import logger
+from src.models.base_matrix_factorization import BaseMatrixFactorization
 
 
-class LFMModel:
+class LFMModel(BaseMatrixFactorization):
     num_threads = 8
 
     def __init__(
@@ -18,16 +20,30 @@ class LFMModel:
         predict_col_name: str = "predict",
         cold_predict: float = -1.0,
         verbose: int = 0,
+        random_state: int = 42,
+        cache_dir: Path | None = None,
     ):
         self.predict_col_name = predict_col_name
         self.cold_predict = cold_predict
         self.loss = loss
         self.n_features = n_features
         self.n_epochs = n_epochs
+        self.random_state = random_state
 
         self.model = LightFMWrapperModel(
-            LightFM(no_components=n_features, random_state=42, loss=loss,),
+            LightFM(no_components=n_features, random_state=random_state, loss=loss,),
             num_threads=self.num_threads, verbose=verbose, epochs=self.n_epochs
+        )
+
+        super().__init__(
+            cache_dir=cache_dir,
+            # params
+            predict_col_name=predict_col_name,
+            cold_predict=cold_predict,
+            loss=loss,
+            n_features=n_features,
+            n_epochs=n_epochs,
+            random_state=random_state,
         )
 
         self.user2idx = None
