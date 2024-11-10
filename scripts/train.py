@@ -99,6 +99,34 @@ def join_features(
     if users_meta_df is not None:
         df = df.join(users_meta_df, how="left", on="user_id")
 
+        age_features = [col for col in df.columns if "age" in col]
+        age_features = [col for col in age_features if col != "age"]
+        df = (
+            df
+            .with_columns(*[
+                (pl.col("age") - pl.col(col)).alias(f"{col}_diff")
+                for col in age_features
+            ])
+            .with_columns(*[
+                (pl.col("age") - pl.col(col)).alias(f"{col}_diff_abs")
+                for col in age_features
+            ])
+        )
+        
+        gender_features = [col for col in df.columns if "gender" in col]
+        gender_features = [col for col in age_features if col != "gender"]
+        df = (
+            df
+            .with_columns(*[
+                (pl.col("gender") - pl.col(col)).alias(f"{col}_diff")
+                for col in gender_features
+            ])
+            .with_columns(*[
+                (pl.col("gender") - pl.col(col)).abs().alias(f"{col}_diff_abs")
+                for col in gender_features
+            ])
+        )
+
     return (
         df
         .sort("user_id")
