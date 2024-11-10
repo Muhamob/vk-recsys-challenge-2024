@@ -83,6 +83,7 @@ def join_features(
     source_stats: pl.DataFrame, 
     items_meta_df: pl.DataFrame,
     sim_features: pl.DataFrame | None,
+    users_meta_df: pl.DataFrame | None
 ):
     df = (
         target
@@ -94,6 +95,9 @@ def join_features(
 
     if sim_features is not None:
         df = df.join(sim_features, how="left", on=["user_id", "item_id"])
+
+    if users_meta_df is not None:
+        df = df.join(users_meta_df, how="left", on="user_id")
 
     return (
         df
@@ -133,8 +137,8 @@ def train(data_dir: Path):
         train_als_like_item = prepare_train_for_als_item_like(datasets["train_df_als"])
         train_als_like_book_share_item = prepare_train_for_als_item_like_book_share(datasets["train_df_als"])
 
-        item_stats = get_item_stats(datasets["train_df_als"], items_meta_df, column="item_id")
-        source_stats = get_item_stats(datasets["train_df_als"], items_meta_df, column="source_id")
+        item_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="item_id")
+        source_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="source_id")
 
         users_meta_df_flatten = (
             users_meta_df
@@ -275,14 +279,14 @@ def train(data_dir: Path):
 
         for model_name, model in models_like.items():
             print(model_name)
-            if "source" not in model_name:
-                model.fit(
-                    train_als_like_item, 
-                    items_meta_df_flatten=items_meta_df_flatten, 
-                    users_meta_df_flatten=users_meta_df_flatten
-                )
-            else:
-                model.fit(train_als_like_item)
+            # if "source" not in model_name:
+            #     model.fit(
+            #         train_als_like_item, 
+            #         items_meta_df_flatten=items_meta_df_flatten, 
+            #         users_meta_df_flatten=users_meta_df_flatten
+            #     )
+            # else:
+            model.fit(train_als_like_item)
 
             predicts["train_df_cb"] = (
                 predicts["train_df_cb"]

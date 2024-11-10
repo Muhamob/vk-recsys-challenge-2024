@@ -124,7 +124,7 @@ class ALSModel(BaseMatrixFactorization):
 
         user_embeddings, item_embeddings = self.model.get_vectors()
 
-        assert catalog.shape[0] == item_embeddings.shape[0]
+        assert catalog.shape[0] == item_embeddings.shape[0], f"Shape mismatch {catalog.shape[0]} != {item_embeddings.shape[0]}"
 
         user2item_dist = (
             user_embeddings[self.user2idx.convert_to_internal(hot_pairs["user_id"].to_numpy())]
