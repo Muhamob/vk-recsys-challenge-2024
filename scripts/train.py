@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 import threadpoolctl
+import logging
 
 import polars as pl
 from tqdm import tqdm
@@ -12,10 +13,11 @@ import mlflow
 from src.data.item_stats import get_item_stats
 from src.metrics import calc_user_auc
 from src.models.als import ALSModel
-from models.als_source import ALSSource
+from src.models.als_source import ALSSource
 from src.models.lightfm import LFMModel
 from src.models.lightfm_source import LightFMSource
 from src.data.preprocessing import load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share
+from src.logger import logger
 
 
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -99,9 +101,20 @@ def join_features(
     )
 
 
-@click.command()
+@click.group()
+@click.option("--level", default="info")
+def cli(level):
+    logger.setLevel({
+        "info": logging.INFO,
+        "debug": logging.DEBUG,
+        "error": logging.ERROR,
+    }[level])
+
+
+
+@cli.command()
 @click.option("--data-dir", type=click.Path(exists=True, file_okay=False), default="./data/")
-def main(data_dir: Path):
+def train(data_dir: Path):
     mlflow.set_experiment("vk")
     mlflow.set_tracking_uri("http://127.0.0.1:8080") 
 
@@ -401,4 +414,4 @@ def main(data_dir: Path):
 
 
 if __name__ == "__main__":
-    main()
+    cli()
