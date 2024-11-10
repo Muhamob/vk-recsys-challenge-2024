@@ -115,6 +115,7 @@ def cli(level):
 @cli.command()
 @click.option("--data-dir", type=click.Path(exists=True, file_okay=False), default="./data/")
 def train(data_dir: Path):
+    # PYTHONPATH=. python scripts/train.py --level debug train --data-dir ./data
     mlflow.set_experiment("vk")
     mlflow.set_tracking_uri("http://127.0.0.1:8080") 
 
@@ -197,23 +198,23 @@ def train(data_dir: Path):
         })
 
         models_like = {
-            "als_item_like": ALSModel(
-                iterations=iterations,
-                alpha=alpha,
-                regularization=regularization,
-                n_factors=n_factors,
-                predict_col_name="predict_als_item_like",
-                cache_dir=als_cache_dir,
-            ),
-            "als_source_like": ALSSource(
-                items_meta_df=items_meta_df,
-                iterations=iterations,
-                alpha=alpha,
-                regularization=regularization,
-                n_factors=n_factors,
-                predict_col_name="predict_als_source_like",
-                cache_dir=als_cache_dir,
-            ),
+            # "als_item_like": ALSModel(
+            #     iterations=iterations,
+            #     alpha=alpha,
+            #     regularization=regularization,
+            #     n_factors=n_factors,
+            #     predict_col_name="predict_als_item_like",
+            #     cache_dir=als_cache_dir,
+            # ),
+            # "als_source_like": ALSSource(
+            #     items_meta_df=items_meta_df,
+            #     iterations=iterations,
+            #     alpha=alpha,
+            #     regularization=regularization,
+            #     n_factors=n_factors,
+            #     predict_col_name="predict_als_source_like",
+            #     cache_dir=als_cache_dir,
+            # ),
             "lfm_item_like": LFMModel(
                 n_features=lfm_n_features, 
                 n_epochs=30, 
@@ -232,23 +233,23 @@ def train(data_dir: Path):
         }
 
         models_like_book_share = {
-            "als_item_like_book_share": ALSModel(
-                iterations=iterations,
-                alpha=alpha,
-                regularization=regularization,
-                n_factors=n_factors,
-                predict_col_name="predict_als_item_like_book_share",
-                cache_dir=als_cache_dir,
-            ),
-            "als_source_like_book_share": ALSSource(
-                items_meta_df=items_meta_df,
-                iterations=iterations,
-                alpha=alpha,
-                regularization=regularization,
-                n_factors=n_factors,
-                predict_col_name="predict_als_source_like_book_share",
-                cache_dir=als_cache_dir,
-            ),
+            # "als_item_like_book_share": ALSModel(
+            #     iterations=iterations,
+            #     alpha=alpha,
+            #     regularization=regularization,
+            #     n_factors=n_factors,
+            #     predict_col_name="predict_als_item_like_book_share",
+            #     cache_dir=als_cache_dir,
+            # ),
+            # "als_source_like_book_share": ALSSource(
+            #     items_meta_df=items_meta_df,
+            #     iterations=iterations,
+            #     alpha=alpha,
+            #     regularization=regularization,
+            #     n_factors=n_factors,
+            #     predict_col_name="predict_als_source_like_book_share",
+            #     cache_dir=als_cache_dir,
+            # ),
             "lfm_item_like_book_share": LFMModel(
                 n_features=lfm_n_features, 
                 n_epochs=30, 
@@ -379,6 +380,8 @@ def train(data_dir: Path):
             # lfm
             "predict_lfm_item_like",
             "predict_lfm_item_like_book_share",
+            "predict_lfm_source_like",
+            "predict_lfm_source_like_book_share",
         ]
 
         test_df_final_prediction = (
