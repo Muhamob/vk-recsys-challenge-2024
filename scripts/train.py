@@ -198,23 +198,23 @@ def train(data_dir: Path):
         })
 
         models_like = {
-            # "als_item_like": ALSModel(
-            #     iterations=iterations,
-            #     alpha=alpha,
-            #     regularization=regularization,
-            #     n_factors=n_factors,
-            #     predict_col_name="predict_als_item_like",
-            #     cache_dir=als_cache_dir,
-            # ),
-            # "als_source_like": ALSSource(
-            #     items_meta_df=items_meta_df,
-            #     iterations=iterations,
-            #     alpha=alpha,
-            #     regularization=regularization,
-            #     n_factors=n_factors,
-            #     predict_col_name="predict_als_source_like",
-            #     cache_dir=als_cache_dir,
-            # ),
+            "als_item_like": ALSModel(
+                iterations=iterations,
+                alpha=alpha,
+                regularization=regularization,
+                n_factors=n_factors,
+                predict_col_name="predict_als_item_like",
+                cache_dir=als_cache_dir,
+            ),
+            "als_source_like": ALSSource(
+                items_meta_df=items_meta_df,
+                iterations=iterations,
+                alpha=alpha,
+                regularization=regularization,
+                n_factors=n_factors,
+                predict_col_name="predict_als_source_like",
+                cache_dir=als_cache_dir,
+            ),
             "lfm_item_like": LFMModel(
                 n_features=lfm_n_features, 
                 n_epochs=30, 
@@ -233,23 +233,23 @@ def train(data_dir: Path):
         }
 
         models_like_book_share = {
-            # "als_item_like_book_share": ALSModel(
-            #     iterations=iterations,
-            #     alpha=alpha,
-            #     regularization=regularization,
-            #     n_factors=n_factors,
-            #     predict_col_name="predict_als_item_like_book_share",
-            #     cache_dir=als_cache_dir,
-            # ),
-            # "als_source_like_book_share": ALSSource(
-            #     items_meta_df=items_meta_df,
-            #     iterations=iterations,
-            #     alpha=alpha,
-            #     regularization=regularization,
-            #     n_factors=n_factors,
-            #     predict_col_name="predict_als_source_like_book_share",
-            #     cache_dir=als_cache_dir,
-            # ),
+            "als_item_like_book_share": ALSModel(
+                iterations=iterations,
+                alpha=alpha,
+                regularization=regularization,
+                n_factors=n_factors,
+                predict_col_name="predict_als_item_like_book_share",
+                cache_dir=als_cache_dir,
+            ),
+            "als_source_like_book_share": ALSSource(
+                items_meta_df=items_meta_df,
+                iterations=iterations,
+                alpha=alpha,
+                regularization=regularization,
+                n_factors=n_factors,
+                predict_col_name="predict_als_source_like_book_share",
+                cache_dir=als_cache_dir,
+            ),
             "lfm_item_like_book_share": LFMModel(
                 n_features=lfm_n_features, 
                 n_epochs=30, 
@@ -372,20 +372,11 @@ def train(data_dir: Path):
         cb_model.fit(train_df_cb_final[feature_columns], train_df_cb_final["target"], group_id=train_df_cb_final["user_id"])
         test_predict = cb_model.predict(test_df_final[feature_columns])
 
-        als_columns = [
-            'predict_als_item_like', 
-            'predict_als_source_like', 
-            'predict_als_item_like_book_share', 
-            'predict_als_source_like_book_share',
-            # lfm
-            "predict_lfm_item_like",
-            "predict_lfm_item_like_book_share",
-            "predict_lfm_source_like",
-            "predict_lfm_source_like_book_share",
-        ]
+        matrix_factorization_columns = [model.predict_col_name for _, model in models_like.items()]
+        matrix_factorization_columns.extend([model.predict_col_name for _, model in models_like_book_share.items()])
 
         test_df_final_prediction = (
-            pl.from_pandas(test_df_final[["user_id", "target", "item_id", *als_columns]])
+            pl.from_pandas(test_df_final[["user_id", "target", "item_id", *matrix_factorization_columns]])
             .with_columns(
                 pl.Series(test_predict).alias("prediction")
             )
@@ -397,7 +388,7 @@ def train(data_dir: Path):
             target_col="target"
         )["rocauc"].mean()
 
-        for predict_col in als_columns + ["prediction", ]:
+        for predict_col in matrix_factorization_columns + ["prediction", ]:
             metric_value = calc_user_auc(
                 df=test_df_final_prediction,
                 predict_col=predict_col, 
