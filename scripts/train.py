@@ -187,21 +187,21 @@ def train(data_dir: Path):
         item_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="item_id")
         source_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="source_id")
 
-        users_meta_df_flatten = (
-            users_meta_df
-            .with_columns(pl.col("age").cut(list(range(10, 100, 5))).to_physical().alias("age_group"))
-            .melt(id_vars=["user_id"], value_vars=["gender", "age_group"], variable_name="feature", value_name="value")
-            .rename({"user_id": "id"})
-        )
+        # users_meta_df_flatten = (
+        #     users_meta_df
+        #     .with_columns(pl.col("age").cut(list(range(10, 100, 5))).to_physical().alias("age_group"))
+        #     .melt(id_vars=["user_id"], value_vars=["gender", "age_group"], variable_name="feature", value_name="value")
+        #     .rename({"user_id": "id"})
+        # )
 
-        items_meta_df_flatten = (
-            items_meta_df
-            .with_columns(
-                pl.col("duration").cut([25, 60]).to_physical()
-            )
-            .melt(id_vars=["item_id"], value_vars=["duration"], variable_name="feature", value_name="value")
-            .rename({"item_id": "id"})
-        )
+        # items_meta_df_flatten = (
+        #     items_meta_df
+        #     .with_columns(
+        #         pl.col("duration").cut([25, 60]).to_physical()
+        #     )
+        #     .melt(id_vars=["item_id"], value_vars=["duration"], variable_name="feature", value_name="value")
+        #     .rename({"item_id": "id"})
+        # )
 
         user_liked_mean_embeddings = (
             datasets["train_df_als"]
@@ -237,6 +237,10 @@ def train(data_dir: Path):
 
         als_cache_dir = data_dir / "cache/models/als"
         lfm_cache_dir = data_dir / "cache/models/lightfm"
+
+        del datasets["train_df_als"]
+        del user_disliked_mean_embeddings
+        del user_liked_mean_embeddings
 
         mlflow.log_params({
             "als_iterations": iterations,
@@ -408,7 +412,6 @@ def train(data_dir: Path):
         del train_als_timespent
         del train_als_like_item
         del train_als_like_book_share_item
-        del datasets["train_df_als"]
 
         train_df_cb_final = join_features(
             datasets["train_df_cb"],
