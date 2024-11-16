@@ -1,6 +1,8 @@
 from datetime import datetime
+from itertools import product
 import os
 from pathlib import Path
+from typing import Sequence
 from sklearn.preprocessing import PolynomialFeatures
 import threadpoolctl
 import logging
@@ -132,6 +134,20 @@ def join_features(
     return (
         df
         .sort("user_id")
+    )
+
+
+def add_poly_features(df: pl.DataFrame, feature_columns: Sequence[str]) -> pl.DataFrame:
+    degree_1_features = [pl.col(col) for col in feature_columns]
+    degree_2_features = [
+        (pl.col(col1) * pl.col(col2)).alias(f"{col1}_{col2}") 
+        for col1, col2 in product(feature_columns, feature_columns) 
+        if col1 != col2
+    ]
+
+    return (
+        df
+        .with_columns(*degree_1_features, *degree_2_features)
     )
 
 
@@ -404,7 +420,7 @@ def train(data_dir: Path):
             users_meta_df=users_meta_df,
         ).with_columns(
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
-        ).to_pandas()
+        )
 
         test_df_final = join_features(
             datasets["test_df"],
@@ -416,7 +432,7 @@ def train(data_dir: Path):
             users_meta_df=users_meta_df
         ).with_columns(
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
-        ).to_pandas()
+        )
 
         test_pairs_final = join_features(
             test_pairs,
@@ -426,11 +442,19 @@ def train(data_dir: Path):
             items_meta_df,
             test_pairs_sim_features,
             users_meta_df=users_meta_df
-        ).to_pandas()
+        )
+
+        feature_columns_raw = [c for c in test_pairs_final.columns if c not in ("user_id", "item_id")]
+        
+        train_df_cb_final = add_poly_features(train_df_cb_final, feature_columns_raw).to_pandas()
+        test_df_final = add_poly_features(test_df_final, feature_columns_raw).to_pandas()
+        test_pairs_final = add_poly_features(test_pairs_final, feature_columns_raw).to_pandas()
 
         feature_columns = [c for c in test_pairs_final.columns if c not in ("user_id", "item_id")]
+
         mlflow.log_params({
-            "raw_feature_columns": feature_columns,
+            "feature_columns_raw": feature_columns_raw,
+            "feature_columns": feature_columns,
             "len_feature_columns": len(feature_columns),
         })
         print(feature_columns)
@@ -444,10 +468,6 @@ def train(data_dir: Path):
             "cb_loss_function": cb_loss_function,
         })
 
-        # Poly featuers
-        poly_features = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False).fit(train_df_cb_final)
-        mlflow.log_param("feature_columns", poly_features.get_feature_names_out())
-
         cb_model = CatBoostRanker(
             iterations=cb_iterations, 
             depth=cb_depth, 
@@ -455,14 +475,8 @@ def train(data_dir: Path):
             verbose=0, 
             loss_function=cb_loss_function
         )
-        cb_model.fit(
-            poly_features.transform(train_df_cb_final[feature_columns]), 
-            train_df_cb_final["target"], 
-            group_id=train_df_cb_final["user_id"]
-        )
-        test_predict = cb_model.predict(
-            poly_features.transform(test_df_final[feature_columns])
-        )
+        cb_model.fit(train_df_cb_final[feature_columns], train_df_cb_final["target"], group_id=train_df_cb_final["user_id"])
+        test_predict = cb_model.predict(test_df_final[feature_columns])
 
         matrix_factorization_columns = [model.predict_col_name for _, model in models_like.items()]
         matrix_factorization_columns.extend([model.predict_col_name for _, model in models_like_book_share.items()])
@@ -490,9 +504,7 @@ def train(data_dir: Path):
             print(f"{predict_col}: {metric_value:.5f}")
             mlflow.log_metric(f"{predict_col}_rocauc", metric_value)
 
-        submission_predict = cb_model.predict(
-            poly_features.transform(test_pairs_final[feature_columns])
-        )
+        submission_predict = cb_model.predict(test_pairs_final[feature_columns])
         test_pairs_final["predict"] = submission_predict
         submission_path = data_dir / f'submissions/{int(datetime.now().timestamp())}_submission.csv'
         submission_path = submission_path.as_posix()
