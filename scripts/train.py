@@ -16,7 +16,7 @@ from src.models.als import ALSModel
 from src.models.als_source import ALSSource
 from src.models.lightfm import LFMModel
 from src.models.lightfm_source import LightFMSource
-from src.data.preprocessing import load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share
+from src.data.preprocessing import load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share, prepare_train_for_als_timespent
 from src.logger import logger
 
 
@@ -164,6 +164,7 @@ def train(data_dir: Path):
 
         train_als_like_item = prepare_train_for_als_item_like(datasets["train_df_als"])
         train_als_like_book_share_item = prepare_train_for_als_item_like_book_share(datasets["train_df_als"])
+        train_als_timespent = prepare_train_for_als_timespent(datasets["train_df_als"], items_meta_df=items_meta_df)
 
         item_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="item_id")
         source_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="source_id")
@@ -299,6 +300,24 @@ def train(data_dir: Path):
             )
         }
 
+        models_timespent = {
+            "als_item_timespent": ALSModel(
+                iterations=iterations,
+                alpha=alpha,
+                regularization=regularization,
+                n_factors=n_factors,
+                predict_col_name="predict_als_item_timespent",
+                cache_dir=als_cache_dir,
+            ),
+            "lfm_item_timespent": LFMModel(
+                n_features=lfm_n_features, 
+                n_epochs=30, 
+                verbose=0,
+                predict_col_name="predict_lfm_item_timespent",
+                cache_dir=lfm_cache_dir,
+            ),
+        }
+
         predicts = {
             "train_df_cb": datasets["train_df_cb"].select("user_id", "item_id"),
             "test_df": datasets["test_df"].select("user_id", "item_id"),
@@ -307,13 +326,6 @@ def train(data_dir: Path):
 
         for model_name, model in models_like.items():
             print(model_name)
-            # if "source" not in model_name:
-            #     model.fit(
-            #         train_als_like_item, 
-            #         items_meta_df_flatten=items_meta_df_flatten, 
-            #         users_meta_df_flatten=users_meta_df_flatten
-            #     )
-            # else:
             model.fit(train_als_like_item)
 
             predicts["train_df_cb"] = (
@@ -336,6 +348,27 @@ def train(data_dir: Path):
         for model_name, model in models_like_book_share.items():
             print(model_name)
             model.fit(train_als_like_book_share_item)
+
+            predicts["train_df_cb"] = (
+                predicts["train_df_cb"]
+                .join(model.predict_proba(datasets["train_df_cb"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            predicts["test_df"] = (
+                predicts["test_df"]
+                .join(model.predict_proba(datasets["test_df"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            predicts["test_pairs"] = (
+                predicts["test_pairs"]
+                .join(model.predict_proba(test_pairs.select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            del model
+
+        for model_name, model in models_timespent.items():
+            print(model_name)
+            model.fit(train_als_timespent)
 
             predicts["train_df_cb"] = (
                 predicts["train_df_cb"]
