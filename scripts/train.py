@@ -387,6 +387,10 @@ def train(data_dir: Path):
 
             del model
 
+        del train_als_timespent
+        del train_als_like_item
+        del train_als_like_book_share_item
+
         train_df_cb_final = join_features(
             datasets["train_df_cb"],
             predicts["train_df_cb"],
