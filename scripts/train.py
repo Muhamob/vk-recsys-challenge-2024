@@ -1,10 +1,12 @@
 from datetime import datetime
 import os
 from pathlib import Path
+from sklearn.preprocessing import PolynomialFeatures
 import threadpoolctl
 import logging
 
 import polars as pl
+import pandas as pd
 from tqdm import tqdm
 from catboost import CatBoostRanker
 import click
@@ -390,6 +392,7 @@ def train(data_dir: Path):
         del train_als_timespent
         del train_als_like_item
         del train_als_like_book_share_item
+        del datasets["train_df_als"]
 
         train_df_cb_final = join_features(
             datasets["train_df_cb"],
@@ -427,7 +430,7 @@ def train(data_dir: Path):
 
         feature_columns = [c for c in test_pairs_final.columns if c not in ("user_id", "item_id")]
         mlflow.log_params({
-            "feature_columns": feature_columns,
+            "raw_feature_columns": feature_columns,
             "len_feature_columns": len(feature_columns),
         })
         print(feature_columns)
@@ -441,6 +444,10 @@ def train(data_dir: Path):
             "cb_loss_function": cb_loss_function,
         })
 
+        # Poly featuers
+        poly_features = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False).fit(train_df_cb_final)
+        mlflow.log_param("feature_columns", poly_features.get_feature_names_out())
+
         cb_model = CatBoostRanker(
             iterations=cb_iterations, 
             depth=cb_depth, 
@@ -448,8 +455,14 @@ def train(data_dir: Path):
             verbose=0, 
             loss_function=cb_loss_function
         )
-        cb_model.fit(train_df_cb_final[feature_columns], train_df_cb_final["target"], group_id=train_df_cb_final["user_id"])
-        test_predict = cb_model.predict(test_df_final[feature_columns])
+        cb_model.fit(
+            poly_features.transform(train_df_cb_final[feature_columns]), 
+            train_df_cb_final["target"], 
+            group_id=train_df_cb_final["user_id"]
+        )
+        test_predict = cb_model.predict(
+            poly_features.transform(test_df_final[feature_columns])
+        )
 
         matrix_factorization_columns = [model.predict_col_name for _, model in models_like.items()]
         matrix_factorization_columns.extend([model.predict_col_name for _, model in models_like_book_share.items()])
@@ -477,7 +490,9 @@ def train(data_dir: Path):
             print(f"{predict_col}: {metric_value:.5f}")
             mlflow.log_metric(f"{predict_col}_rocauc", metric_value)
 
-        submission_predict = cb_model.predict(test_pairs_final[feature_columns])
+        submission_predict = cb_model.predict(
+            poly_features.transform(test_pairs_final[feature_columns])
+        )
         test_pairs_final["predict"] = submission_predict
         submission_path = data_dir / f'submissions/{int(datetime.now().timestamp())}_submission.csv'
         submission_path = submission_path.as_posix()
