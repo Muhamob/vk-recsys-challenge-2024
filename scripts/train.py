@@ -138,7 +138,7 @@ def join_features(
     df = (
         df
         .with_columns(
-            (pl.col("like_perc") * pl.col("mean_like")).alias("user2item_like_perc")
+            (pl.col("user_like_perc") * pl.col("mean_like")).alias("user2item_like_perc")
         )
     )
 
