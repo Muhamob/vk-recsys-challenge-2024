@@ -137,17 +137,30 @@ def join_features(
     )
 
 
-def add_poly_features(df: pl.DataFrame, feature_columns: Sequence[str]) -> pl.DataFrame:
-    degree_1_features = [pl.col(col) for col in feature_columns]
+def add_poly_features(df: pl.DataFrame, feature_columns: Sequence[str]) -> tuple[pl.DataFrame, Sequence[str]]:
+    logger.info(f"Adding poly features, input df: n_rows {df.shape[0]} n_features {len(feature_columns)}")
+    
+    user2item_features = [col for col in feature_columns if "predict_" in col]
+    other_features = [col for col in feature_columns if col not in user2item_features]
+    degree_2_features_names = [f"{col1}___{col2}" for col1, col2 in product(user2item_features, other_features)]
+    
+    logger.info(f"Number of user2item features: {len(user2item_features)}, other features {len(other_features)}, degree 2 features {len(degree_2_features_names)}")
+
     degree_2_features = [
-        (pl.col(col1) * pl.col(col2)).alias(f"{col1}_{col2}") 
-        for col1, col2 in product(feature_columns, feature_columns) 
-        if col1 != col2
+        (pl.col(col1) * pl.col(col2)).alias(f"{col1}___{col2}") 
+        for col1, col2 in [
+            cols.split("___") for cols in degree_2_features_names
+        ]
     ]
 
+    logger.info(f"Number of out features {len(feature_columns) + len(degree_2_features)}")
+
     return (
-        df
-        .with_columns(*degree_1_features, *degree_2_features)
+        (
+            df
+            .with_columns(*degree_2_features)
+        ),
+        [*feature_columns, *degree_2_features_names]
     )
 
 
@@ -366,6 +379,8 @@ def train(data_dir: Path):
             )
 
             del model
+        
+        del train_als_like_item
 
         for model_name, model in models_like_book_share.items():
             print(model_name)
@@ -387,6 +402,8 @@ def train(data_dir: Path):
             )
 
             del model
+        
+        del train_als_like_book_share_item
 
         for model_name, model in models_timespent.items():
             print(model_name)
@@ -410,8 +427,6 @@ def train(data_dir: Path):
             del model
 
         del train_als_timespent
-        del train_als_like_item
-        del train_als_like_book_share_item
 
         train_df_cb_final = join_features(
             datasets["train_df_cb"],
@@ -449,18 +464,14 @@ def train(data_dir: Path):
 
         feature_columns_raw = [c for c in test_pairs_final.columns if c not in ("user_id", "item_id")]
         
-        train_df_cb_final = add_poly_features(train_df_cb_final, feature_columns_raw).to_pandas()
-        test_df_final = add_poly_features(test_df_final, feature_columns_raw).to_pandas()
-        test_pairs_final = add_poly_features(test_pairs_final, feature_columns_raw).to_pandas()
-
-        feature_columns = [c for c in test_pairs_final.columns if c not in ("user_id", "item_id")]
+        train_df_cb_final, feature_columns = add_poly_features(train_df_cb_final, feature_columns_raw)
+        train_df_cb_final = train_df_cb_final.to_pandas()
 
         mlflow.log_params({
             "feature_columns_raw": feature_columns_raw,
             "feature_columns": feature_columns,
             "len_feature_columns": len(feature_columns),
         })
-        print(feature_columns)
 
         cb_iterations = 1000
         cb_depth = 6
@@ -471,6 +482,7 @@ def train(data_dir: Path):
             "cb_loss_function": cb_loss_function,
         })
 
+        logger.info("training catboost model")
         cb_model = CatBoostRanker(
             iterations=cb_iterations, 
             depth=cb_depth, 
@@ -479,17 +491,24 @@ def train(data_dir: Path):
             loss_function=cb_loss_function
         )
         cb_model.fit(train_df_cb_final[feature_columns], train_df_cb_final["target"], group_id=train_df_cb_final["user_id"])
-        test_predict = cb_model.predict(test_df_final[feature_columns])
+
+        del train_df_cb_final
 
         matrix_factorization_columns = [model.predict_col_name for _, model in models_like.items()]
         matrix_factorization_columns.extend([model.predict_col_name for _, model in models_like_book_share.items()])
 
+        test_df_final, _ = add_poly_features(test_df_final, feature_columns_raw)
+        test_df_final = test_df_final.to_pandas()
+        
+        test_predict = cb_model.predict(test_df_final[feature_columns])
         test_df_final_prediction = (
             pl.from_pandas(test_df_final[["user_id", "target", "item_id", *matrix_factorization_columns]])
             .with_columns(
                 pl.Series(test_predict).alias("prediction")
             )
         )
+
+        del test_df_final
 
         metric_value = calc_user_auc(
             df=test_df_final_prediction,
@@ -506,6 +525,9 @@ def train(data_dir: Path):
 
             print(f"{predict_col}: {metric_value:.5f}")
             mlflow.log_metric(f"{predict_col}_rocauc", metric_value)
+
+        test_pairs_final, _ = add_poly_features(test_pairs_final, feature_columns_raw)
+        test_pairs_final = test_pairs_final.to_pandas()
 
         submission_predict = cb_model.predict(test_pairs_final[feature_columns])
         test_pairs_final["predict"] = submission_predict
