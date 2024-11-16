@@ -10,7 +10,7 @@ def get_item_stats(
     ratio_default_value: float = 1.0,
     min_users_for_stats: int = 20,
     max_timespent_ratio: float = 5.0
-):
+) -> pl.DataFrame:
     item_features_extra = (
         train_df
         .drop(["rn", "max_rn"])
@@ -38,7 +38,7 @@ def get_item_stats(
             pl.col("age").mean().alias("mean_age"),
             pl.col("age").filter(pl.col("positive_feedback") >= 1).mean().alias("mean_age_positive"),
             pl.col("age").filter(pl.col("dislike") >= 1).mean().alias("mean_age_negative"),
-            pl.col("positive_feedback").sum().alias("sum_positive")
+            pl.col("positive_feedback").sum().alias("sum_positive"),
         )
         .filter(pl.col("n_users") >= min_users_for_stats)
         .with_columns(

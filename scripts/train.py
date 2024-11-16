@@ -15,6 +15,7 @@ import click
 import mlflow
 
 from src.data.item_stats import get_item_stats
+from src.data.user_stats import get_user_stats
 from src.metrics import calc_user_auc
 from src.models.als import ALSModel
 from src.models.als_source import ALSSource
@@ -87,7 +88,8 @@ def join_features(
     source_stats: pl.DataFrame, 
     items_meta_df: pl.DataFrame,
     sim_features: pl.DataFrame | None,
-    users_meta_df: pl.DataFrame | None
+    users_meta_df: pl.DataFrame | None,
+    user_stats: pl.DataFrame,
 ):
     df = (
         target
@@ -95,6 +97,7 @@ def join_features(
         .join(item_stats, how="left", on=["item_id"], suffix="_item")
         .join(items_meta_df.select("item_id", "source_id"), how="left", on="item_id")
         .join(source_stats, how="left", on="source_id", suffix="_source")
+        .join(user_stats, how="left", on="user_id")
     )
 
     if sim_features is not None:
@@ -130,6 +133,14 @@ def join_features(
                 for col in gender_features
             ])
         )
+
+    # extra features
+    df = (
+        df
+        .with_columns(
+            (pl.col("like_perc") * pl.col("mean_like")).alias("user2item_like_perc")
+        )
+    )
 
     return (
         df
@@ -199,22 +210,7 @@ def train(data_dir: Path):
 
         item_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="item_id")
         source_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="source_id")
-
-        # users_meta_df_flatten = (
-        #     users_meta_df
-        #     .with_columns(pl.col("age").cut(list(range(10, 100, 5))).to_physical().alias("age_group"))
-        #     .melt(id_vars=["user_id"], value_vars=["gender", "age_group"], variable_name="feature", value_name="value")
-        #     .rename({"user_id": "id"})
-        # )
-
-        # items_meta_df_flatten = (
-        #     items_meta_df
-        #     .with_columns(
-        #         pl.col("duration").cut([25, 60]).to_physical()
-        #     )
-        #     .melt(id_vars=["item_id"], value_vars=["duration"], variable_name="feature", value_name="value")
-        #     .rename({"item_id": "id"})
-        # )
+        user_stats = get_user_stats(datasets["train_df_als"], items_meta_df=items_meta_df)
 
         user_liked_mean_embeddings = (
             datasets["train_df_als"]
@@ -436,6 +432,7 @@ def train(data_dir: Path):
             items_meta_df,
             train_df_cb_sim_features,
             users_meta_df=users_meta_df,
+            user_stats=user_stats,
         ).with_columns(
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
         )
@@ -447,7 +444,8 @@ def train(data_dir: Path):
             source_stats,
             items_meta_df,
             test_df_sim_features,
-            users_meta_df=users_meta_df
+            users_meta_df=users_meta_df,
+            user_stats=user_stats,
         ).with_columns(
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
         )
@@ -459,7 +457,8 @@ def train(data_dir: Path):
             source_stats,
             items_meta_df,
             test_pairs_sim_features,
-            users_meta_df=users_meta_df
+            users_meta_df=users_meta_df,
+            user_stats=user_stats,
         )
 
         feature_columns_raw = [c for c in test_pairs_final.columns if c not in ("user_id", "item_id")]
