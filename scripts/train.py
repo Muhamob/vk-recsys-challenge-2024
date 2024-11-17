@@ -7,6 +7,7 @@ import threadpoolctl
 import logging
 
 import polars as pl
+import numpy as np
 from tqdm import tqdm
 from catboost import CatBoostRanker
 import click
@@ -19,6 +20,7 @@ from src.models.als import ALSModel
 from src.models.als_source import ALSSource
 from src.models.lightfm import LFMModel
 from src.models.lightfm_source import LightFMSource
+from src.models.w2v_model import W2VModel
 from src.data.preprocessing import load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share, prepare_train_for_als_timespent
 from src.logger import logger
 
@@ -29,6 +31,26 @@ threadpoolctl.threadpool_limits(1, "blas")
 
 def calc_mean_embedding(embeddings: pl.Series):
     return embeddings.to_numpy().mean(axis=0).tolist()
+
+
+def calc_mean_embedding_agg(embeddings: pl.Series):
+    return np.mean(embeddings[0].to_numpy(), axis=0)
+
+
+def calc_w2v_user_embeddings(df: pl.DataFrame, model: Word2Vec, n_batches: int = 1000) -> pl.DataFrame:
+    user_embeddings = []
+    for i in tqdm(range(n_batches), total=n_batches):
+        user_embeddings.append((
+            df
+            .filter(pl.col("user_id") % n_batches == i)
+            .join(item_embeddings_df, how="inner", on="item_id")
+            .group_by("user_id")
+            .agg(pl.map_groups(exprs=["embeddings"], function=calc_mean_embedding_agg))  # type:ignore
+        ))
+
+    user_embeddings = pl.concat(user_embeddings)
+
+    return user_embeddings
 
 
 def dot_product(x):
@@ -241,11 +263,17 @@ def train(data_dir: Path):
         # n_factors = 96
         n_factors = 128
 
+        # lfm
         lfm_n_features = 96
         lfm_n_epochs = 10
 
+        # w2v
+        w2v_n_features = 128
+        w2v_n_epochs = 10
+
         als_cache_dir = data_dir / "cache/models/als"
         lfm_cache_dir = data_dir / "cache/models/lightfm"
+        w2v_cache_dir = data_dir / "cache/models/w2v"
 
         del datasets["train_df_als"]
         del user_disliked_mean_embeddings
@@ -259,7 +287,25 @@ def train(data_dir: Path):
 
             "lfm_n_features": lfm_n_features,
             "lfm_n_epochs": lfm_n_epochs,
+
+            "w2v_n_features": w2v_n_features,
+            "w2v_n_epochs": w2v_n_epochs,
         })
+
+        models_w2v = {
+            "like": W2VModel(
+                n_features=w2v_n_features, 
+                n_epochs=w2v_n_epochs, 
+                predict_col_name="w2v_predict_like", 
+                cache_dir=w2v_cache_dir
+            ),
+            "timespent": W2VModel(
+                n_features=w2v_n_features, 
+                n_epochs=w2v_n_epochs, 
+                predict_col_name="w2v_predict_timespent", 
+                cache_dir=w2v_cache_dir
+            ),
+        }
 
         models_like = {
             "als_item_like": ALSModel(
@@ -378,6 +424,31 @@ def train(data_dir: Path):
         
         matrix_factorization_columns = [model.predict_col_name for _, model in models_like.items()]
 
+        model_w2v = models_w2v["like"]
+        model_w2v.fit(train_als_like_item)
+        predicts["train_df_cb"] = (
+            predicts["train_df_cb"]
+            .join(model_w2v.predict_proba(
+                datasets["train_df_cb"].select("user_id", "item_id"), 
+                train_als_like_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_df"] = (
+            predicts["test_df"]
+            .join(model_w2v.predict_proba(
+                datasets["test_df"].select("user_id", "item_id"), 
+                train_als_like_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_pairs"] = (
+            predicts["test_pairs"]
+            .join(model_w2v.predict_proba(
+                test_pairs.select("user_id", "item_id"), 
+                train_als_like_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        matrix_factorization_columns.append(model_w2v.predict_col_name)
+
         del train_als_like_item
         del models_like
         gc.collect()
@@ -431,6 +502,31 @@ def train(data_dir: Path):
             del model
 
         matrix_factorization_columns.extend([model.predict_col_name for _, model in models_timespent.items()])
+
+        model_w2v = models_w2v["timespent"]
+        model_w2v.fit(train_als_timespent)
+        predicts["train_df_cb"] = (
+            predicts["train_df_cb"]
+            .join(model_w2v.predict_proba(
+                datasets["train_df_cb"].select("user_id", "item_id"), 
+                train_als_timespent
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_df"] = (
+            predicts["test_df"]
+            .join(model_w2v.predict_proba(
+                datasets["test_df"].select("user_id", "item_id"), 
+                train_als_timespent
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_pairs"] = (
+            predicts["test_pairs"]
+            .join(model_w2v.predict_proba(
+                test_pairs.select("user_id", "item_id"), 
+                train_als_timespent
+            ), how="left", on=["user_id", "item_id"])
+        )
+        matrix_factorization_columns.append(model_w2v.predict_col_name)
 
         del train_als_timespent
         del models_timespent
