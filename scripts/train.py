@@ -248,8 +248,8 @@ def train(data_dir: Path):
         n_factors = 128
 
         # lfm
-        lfm_n_features = 96
-        lfm_n_epochs = 30
+        lfm_n_features = 128
+        lfm_n_epochs = 50
 
         # w2v
         w2v_n_features = 128
