@@ -376,6 +376,8 @@ def train(data_dir: Path):
 
             del model
         
+        matrix_factorization_columns = [model.predict_col_name for _, model in models_like.items()]
+
         del train_als_like_item
         del models_like
         gc.collect()
@@ -400,6 +402,8 @@ def train(data_dir: Path):
             )
 
             del model
+
+        matrix_factorization_columns.extend([model.predict_col_name for _, model in models_like_book_share.items()])
         
         del train_als_like_book_share_item
         del models_like_book_share
@@ -425,6 +429,8 @@ def train(data_dir: Path):
             )
 
             del model
+
+        matrix_factorization_columns.extend([model.predict_col_name for _, model in models_timespent.items()])
 
         del train_als_timespent
         del models_timespent
@@ -510,9 +516,6 @@ def train(data_dir: Path):
         cb_model.fit(train_df_cb_final[feature_columns], train_df_cb_final["target"], group_id=train_df_cb_final["user_id"])
 
         del train_df_cb_final
-
-        matrix_factorization_columns = [model.predict_col_name for _, model in models_like.items()]
-        matrix_factorization_columns.extend([model.predict_col_name for _, model in models_like_book_share.items()])
 
         test_df_final, _ = add_poly_features(test_df_final, feature_columns_raw)
         test_df_final = test_df_final.to_pandas()
