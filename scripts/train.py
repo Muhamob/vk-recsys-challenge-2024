@@ -33,26 +33,6 @@ def calc_mean_embedding(embeddings: pl.Series):
     return embeddings.to_numpy().mean(axis=0).tolist()
 
 
-def calc_mean_embedding_agg(embeddings: pl.Series):
-    return np.mean(embeddings[0].to_numpy(), axis=0)
-
-
-def calc_w2v_user_embeddings(df: pl.DataFrame, model: Word2Vec, n_batches: int = 1000) -> pl.DataFrame:
-    user_embeddings = []
-    for i in tqdm(range(n_batches), total=n_batches):
-        user_embeddings.append((
-            df
-            .filter(pl.col("user_id") % n_batches == i)
-            .join(item_embeddings_df, how="inner", on="item_id")
-            .group_by("user_id")
-            .agg(pl.map_groups(exprs=["embeddings"], function=calc_mean_embedding_agg))  # type:ignore
-        ))
-
-    user_embeddings = pl.concat(user_embeddings)
-
-    return user_embeddings
-
-
 def dot_product(x):
     left_embeddings = x.struct[0].to_numpy()
     right_embeddings = x.struct[1].to_numpy()
