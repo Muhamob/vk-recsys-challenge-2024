@@ -246,7 +246,7 @@ def train(data_dir: Path):
 
         # lfm
         lfm_n_features = 96
-        lfm_n_epochs = 10
+        lfm_n_epochs = 30
 
         # w2v
         w2v_n_features = 128
@@ -308,19 +308,36 @@ def train(data_dir: Path):
             ),
             "lfm_item_like": LFMModel(
                 n_features=lfm_n_features, 
-                n_epochs=30, 
+                n_epochs=lfm_n_epochs, 
                 verbose=0,
                 predict_col_name="predict_lfm_item_like",
+                cache_dir=lfm_cache_dir,
+            ),
+            "lfm_item_like_warp": LFMModel(
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                loss="warp",
+                verbose=0,
+                predict_col_name="predict_lfm_item_like_warp",
                 cache_dir=lfm_cache_dir,
             ),
             "lfm_source_like": LightFMSource(
                 items_meta_df=items_meta_df,
                 n_features=lfm_n_features, 
-                n_epochs=30, 
+                n_epochs=lfm_n_epochs, 
                 verbose=0,
                 predict_col_name="predict_lfm_source_like",
                 cache_dir=lfm_cache_dir,
-            )
+            ),
+            "lfm_source_like_warp": LightFMSource(
+                items_meta_df=items_meta_df,
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                loss="warp",
+                verbose=0,
+                predict_col_name="predict_lfm_source_like_warp",
+                cache_dir=lfm_cache_dir,
+            ),
         }
 
         models_like_book_share = {
@@ -343,17 +360,34 @@ def train(data_dir: Path):
             ),
             "lfm_item_like_book_share": LFMModel(
                 n_features=lfm_n_features, 
-                n_epochs=30, 
+                n_epochs=lfm_n_epochs, 
                 verbose=0,
                 predict_col_name="predict_lfm_item_like_book_share",
+                cache_dir=lfm_cache_dir,
+            ),
+            "lfm_item_like_book_share_warp": LFMModel(
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                verbose=0,
+                loss="warp",
+                predict_col_name="predict_lfm_item_like_book_share_warp",
                 cache_dir=lfm_cache_dir,
             ),
             "lfm_source_like_book_share": LightFMSource(
                 items_meta_df=items_meta_df,
                 n_features=lfm_n_features, 
-                n_epochs=30, 
+                n_epochs=lfm_n_epochs, 
                 verbose=0,
                 predict_col_name="predict_lfm_source_like_book_share",
+                cache_dir=lfm_cache_dir,
+            ),
+            "lfm_source_like_book_share_warp": LightFMSource(
+                items_meta_df=items_meta_df,
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                loss="warp",
+                verbose=0,
+                predict_col_name="predict_lfm_source_like_book_share_warp",
                 cache_dir=lfm_cache_dir,
             )
         }
@@ -369,7 +403,7 @@ def train(data_dir: Path):
             ),
             "lfm_item_timespent": LFMModel(
                 n_features=lfm_n_features, 
-                n_epochs=30, 
+                n_epochs=lfm_n_epochs, 
                 verbose=0,
                 predict_col_name="predict_lfm_item_timespent",
                 cache_dir=lfm_cache_dir,
