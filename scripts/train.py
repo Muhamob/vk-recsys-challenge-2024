@@ -150,34 +150,34 @@ def join_features(
 
 
 def add_poly_features(df: pl.DataFrame, feature_columns: Sequence[str]) -> tuple[pl.DataFrame, Sequence[str]]:
-    # return (df, feature_columns)
-    logger.info(f"Adding poly features, input df: n_rows {df.shape[0]} n_features {len(feature_columns)}")
+    return (df, feature_columns)
+    # logger.info(f"Adding poly features, input df: n_rows {df.shape[0]} n_features {len(feature_columns)}")
     
-    user2item_features = [col for col in feature_columns if "predict_" in col]
-    other_features = [col for col in feature_columns if col not in user2item_features]
-    degree_2_features_names = [
-        f"{col1}___{col2}" for col1, col2 in product(user2item_features, user2item_features)
-        if col1 != col2 and col1 < col2
-    ]
+    # user2item_features = [col for col in feature_columns if "predict_" in col]
+    # other_features = [col for col in feature_columns if col not in user2item_features]
+    # degree_2_features_names = [
+    #     f"{col1}___{col2}" for col1, col2 in product(user2item_features, user2item_features)
+    #     if col1 != col2 and col1 < col2
+    # ]
     
-    logger.info(f"Number of user2item features: {len(user2item_features)}, other features {len(other_features)}, degree 2 features {len(degree_2_features_names)}")
+    # logger.info(f"Number of user2item features: {len(user2item_features)}, other features {len(other_features)}, degree 2 features {len(degree_2_features_names)}")
 
-    degree_2_features = [
-        (pl.col(col1) * pl.col(col2)).alias(f"{col1}___{col2}") 
-        for col1, col2 in [
-            cols.split("___") for cols in degree_2_features_names
-        ]
-    ]
+    # degree_2_features = [
+    #     (pl.col(col1) * pl.col(col2)).alias(f"{col1}___{col2}") 
+    #     for col1, col2 in [
+    #         cols.split("___") for cols in degree_2_features_names
+    #     ]
+    # ]
 
-    logger.info(f"Number of out features {len(feature_columns) + len(degree_2_features)}")
+    # logger.info(f"Number of out features {len(feature_columns) + len(degree_2_features)}")
 
-    return (
-        (
-            df
-            .with_columns(*degree_2_features)
-        ),
-        [*feature_columns, *degree_2_features_names]
-    )
+    # return (
+    #     (
+    #         df
+    #         .with_columns(*degree_2_features)
+    #     ),
+    #     [*feature_columns, *degree_2_features_names]
+    # )
 
 
 @click.group()
