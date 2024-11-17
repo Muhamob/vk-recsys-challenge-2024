@@ -238,7 +238,8 @@ def train(data_dir: Path):
         iterations = 49
         alpha = 44
         regularization = 0.07702668794141683
-        n_factors = 96
+        # n_factors = 96
+        n_factors = 128
 
         lfm_n_features = 96
         lfm_n_epochs = 10
