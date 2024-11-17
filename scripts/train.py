@@ -1,14 +1,12 @@
 from datetime import datetime
-from itertools import product
+import gc
 import os
 from pathlib import Path
 from typing import Sequence
-from sklearn.preprocessing import PolynomialFeatures
 import threadpoolctl
 import logging
 
 import polars as pl
-import pandas as pd
 from tqdm import tqdm
 from catboost import CatBoostRanker
 import click
@@ -378,6 +376,8 @@ def train(data_dir: Path):
             del model
         
         del train_als_like_item
+        del models_like
+        gc.collect()
 
         for model_name, model in models_like_book_share.items():
             print(model_name)
@@ -401,6 +401,8 @@ def train(data_dir: Path):
             del model
         
         del train_als_like_book_share_item
+        del models_like_book_share
+        gc.collect()
 
         for model_name, model in models_timespent.items():
             print(model_name)
@@ -424,6 +426,8 @@ def train(data_dir: Path):
             del model
 
         del train_als_timespent
+        del models_timespent
+        gc.collect()
 
         train_df_cb_final = join_features(
             datasets["train_df_cb"],
@@ -461,6 +465,18 @@ def train(data_dir: Path):
             users_meta_df=users_meta_df,
             user_stats=user_stats,
         )
+
+        del item_stats
+        del source_stats
+        del items_meta_df
+        del users_meta_df
+        del user_stats
+        del train_df_cb_sim_features
+        del test_df_sim_features
+        del test_pairs_sim_features
+        del predicts
+
+        gc.collect()
 
         feature_columns_raw = [c for c in test_pairs_final.columns if c not in ("user_id", "item_id")]
         
