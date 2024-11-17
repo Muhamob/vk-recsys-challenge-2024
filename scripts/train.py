@@ -332,14 +332,14 @@ def train(data_dir: Path):
         }
 
         models_timespent = {
-            # "als_item_timespent": ALSModel(
-            #     iterations=iterations,
-            #     alpha=alpha,
-            #     regularization=regularization,
-            #     n_factors=n_factors,
-            #     predict_col_name="predict_als_item_timespent",
-            #     cache_dir=als_cache_dir,
-            # ),
+            "als_item_timespent": ALSModel(
+                iterations=iterations,
+                alpha=alpha,
+                regularization=regularization,
+                n_factors=n_factors,
+                predict_col_name="predict_als_item_timespent",
+                cache_dir=als_cache_dir,
+            ),
             "lfm_item_timespent": LFMModel(
                 n_features=lfm_n_features, 
                 n_epochs=30, 
