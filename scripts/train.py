@@ -562,7 +562,8 @@ def train(data_dir: Path):
             users_meta_df=users_meta_df,
             user_stats=user_stats,
         ).with_columns(
-            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
+            # (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
+            pl.col("like").alias("target")
         )
 
         test_df_final = join_features(
@@ -575,7 +576,8 @@ def train(data_dir: Path):
             users_meta_df=users_meta_df,
             user_stats=user_stats,
         ).with_columns(
-            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
+            # (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
+            pl.col("like").alias("target")
         )
 
         test_pairs_final = join_features(
@@ -615,29 +617,39 @@ def train(data_dir: Path):
         cb_iterations = 1000
         cb_depth = 6
 
-        cb_loss_function = "YetiRank"
+        # cb_loss_function = "YetiRank"
+        # mlflow.log_params({
+        #     "cb_iterations": cb_iterations,
+        #     "cb_depth": cb_depth,
+        #     "cb_loss_function": cb_loss_function,
+        # })
+
+        # logger.info("training catboost model")
+        # cb_model = CatBoostRanker(
+        #     iterations=cb_iterations, 
+        #     depth=cb_depth, 
+        #     random_seed=32, 
+        #     verbose=0, 
+        #     loss_function=cb_loss_function
+        # )
+        # cb_model.fit(train_df_cb_final[feature_columns], train_df_cb_final["target"], group_id=train_df_cb_final["user_id"])
+
+        logger.info("training catboost model")
         mlflow.log_params({
             "cb_iterations": cb_iterations,
             "cb_depth": cb_depth,
-            "cb_loss_function": cb_loss_function,
+            "cb_loss_function": "classification",
         })
-
-        logger.info("training catboost model")
-        cb_model = CatBoostRanker(
-            iterations=cb_iterations, 
-            depth=cb_depth, 
-            random_seed=32, 
-            verbose=0, 
-            loss_function=cb_loss_function
-        )
-        cb_model.fit(train_df_cb_final[feature_columns], train_df_cb_final["target"], group_id=train_df_cb_final["user_id"])
+        cb_model = CatBoostClassifier(iterations=cb_iterations, depth=cb_depth, random_seed=32, verbose=0)
+        cb_model.fit(train_df_cb_final[feature_columns], train_df_cb_final["target"])
 
         del train_df_cb_final
 
         test_df_final, _ = add_poly_features(test_df_final, feature_columns_raw)
         test_df_final = test_df_final.to_pandas()
         
-        test_predict = cb_model.predict(test_df_final[feature_columns])
+        # test_predict = cb_model.predict(test_df_final[feature_columns])
+        test_predict = cb_model.predict_proba(test_df_final[feature_columns])[:, 1]
         test_df_final_prediction = (
             pl.from_pandas(test_df_final[["user_id", "target", "item_id", *matrix_factorization_columns]])
             .with_columns(
@@ -666,7 +678,8 @@ def train(data_dir: Path):
         test_pairs_final, _ = add_poly_features(test_pairs_final, feature_columns_raw)
         test_pairs_final = test_pairs_final.to_pandas()
 
-        submission_predict = cb_model.predict(test_pairs_final[feature_columns])
+        # submission_predict = cb_model.predict(test_pairs_final[feature_columns])
+        submission_predict = cb_model.predict_proba(test_pairs_final[feature_columns])[:, 1]
         test_pairs_final["predict"] = submission_predict
         submission_path = data_dir / f'submissions/{int(datetime.now().timestamp())}_submission.csv'
         submission_path = submission_path.as_posix()
