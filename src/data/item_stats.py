@@ -53,11 +53,11 @@ def get_item_stats(
         )
         .drop(
             "n_users",
-            "sum_like",
-            "sum_dislike",
-            "sum_share",
-            "sum_bookmarks",
-            "sum_positive"
+            # "sum_like",
+            # "sum_dislike",
+            # "sum_share",
+            # "sum_bookmarks",
+            # "sum_positive"
         )
     )
 
