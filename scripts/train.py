@@ -647,7 +647,7 @@ def train(data_dir: Path):
         test_df_final = test_df_final.to_pandas()
         
         # test_predict = cb_model.predict(test_df_final[feature_columns])
-        test_predict = cb_model.predict_proba(test_df_final[feature_columns])[:, 1]
+        test_predict = cb_model.predict_proba(test_df_final[feature_columns])[:, 0]
         test_df_final_prediction = (
             pl.from_pandas(test_df_final[["user_id", "target", "item_id", *matrix_factorization_columns]])
             .with_columns(
@@ -677,7 +677,7 @@ def train(data_dir: Path):
         test_pairs_final = test_pairs_final.to_pandas()
 
         # submission_predict = cb_model.predict(test_pairs_final[feature_columns])
-        submission_predict = cb_model.predict_proba(test_pairs_final[feature_columns])[:, 1]
+        submission_predict = cb_model.predict_proba(test_pairs_final[feature_columns])[:, 0]
         test_pairs_final["predict"] = submission_predict
         submission_path = data_dir / f'submissions/{int(datetime.now().timestamp())}_submission.csv'
         submission_path = submission_path.as_posix()
