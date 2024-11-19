@@ -562,8 +562,7 @@ def train(data_dir: Path):
             users_meta_df=users_meta_df,
             user_stats=user_stats,
         ).with_columns(
-            # (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
-            pl.col("like").alias("target")
+            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
         )
 
         test_df_final = join_features(
@@ -576,8 +575,7 @@ def train(data_dir: Path):
             users_meta_df=users_meta_df,
             user_stats=user_stats,
         ).with_columns(
-            # (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
-            pl.col("like").alias("target")
+            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
         )
 
         test_pairs_final = join_features(
