@@ -581,10 +581,10 @@ def optimize_(trial, data):
         mlflow.log_params(data["log_params"])
         cb_iterations = trial.suggest_int('iterations', 400, 1500)
         cb_depth = trial.suggest_int('depth', 5, 7)
-        cb_grow_policy = trial.suggset_categorical("grow_policy", [
+        cb_grow_policy = trial.suggest_categorical("grow_policy", [
             "SymmetricTree", "Depthwise", "Lossguide"
         ])
-        cb_border_count = trial.suggset_categorical("border_count", [32, 64, 96])
+        cb_border_count = trial.suggest_categorical("border_count", [32, 64, 96])
         cb_l2_leaf_reg = trial.suggest_float("l2_leaf_reg", 0.001, 0.5)
         cb_loss_function = "YetiRank"
 
