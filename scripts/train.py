@@ -22,7 +22,7 @@ from src.models.als_source import ALSSource
 from src.models.lightfm import LFMModel
 from src.models.lightfm_source import LightFMSource
 from src.models.w2v_model import W2VModel
-from src.data.preprocessing import load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share, prepare_train_for_als_timespent
+from src.data.preprocessing import add_log_weight, load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share, prepare_train_for_als_timespent
 from src.logger import logger
 
 
@@ -213,6 +213,9 @@ def train(data_dir: Path):
         train_als_like_book_share_item = prepare_train_for_als_item_like_book_share(datasets["train_df_als"])
         train_als_timespent = prepare_train_for_als_timespent(datasets["train_df_als"], items_meta_df=items_meta_df)
 
+        train_als_like_item_time_weighted = add_log_weight(train_als_like_item)
+        train_als_like_book_share_item_time_weighted = add_log_weight(train_als_like_book_share_item)
+
         item_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="item_id")
         source_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="source_id")
         user_stats = get_user_stats(datasets["train_df_als"], items_meta_df=items_meta_df)
@@ -343,6 +346,32 @@ def train(data_dir: Path):
             ),
         }
 
+        models_like_time_weighted = {
+            "als_item_like_time_weighted": ALSModel(
+                iterations=iterations,
+                alpha=alpha,
+                regularization=regularization,
+                n_factors=n_factors,
+                predict_col_name="predict_als_item_like_time_weighted",
+                cache_dir=als_cache_dir,
+            ),
+            "lfm_item_like_time_weighted": LFMModel(
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                verbose=0,
+                predict_col_name="predict_lfm_item_like_time_weighted",
+                cache_dir=lfm_cache_dir,
+            ),
+            "lfm_item_like_warp_time_weighted": LFMModel(
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                loss="warp",
+                verbose=0,
+                predict_col_name="predict_lfm_item_like_warp_time_weighted",
+                cache_dir=lfm_cache_dir,
+            ),
+        }
+
         models_like_book_share = {
             "als_item_like_book_share": ALSModel(
                 iterations=iterations,
@@ -393,6 +422,32 @@ def train(data_dir: Path):
                 predict_col_name="predict_lfm_source_like_book_share_warp",
                 cache_dir=lfm_cache_dir,
             )
+        }
+
+        models_like_book_share_time_weighted = {
+            "als_item_like_book_share_time_weighted": ALSModel(
+                iterations=iterations,
+                alpha=alpha,
+                regularization=regularization,
+                n_factors=n_factors,
+                predict_col_name="predict_als_item_like_book_share_time_weighted",
+                cache_dir=als_cache_dir,
+            ),
+            "lfm_item_like_book_share_time_weighted": LFMModel(
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                verbose=0,
+                predict_col_name="predict_lfm_item_like_book_share_time_weighted",
+                cache_dir=lfm_cache_dir,
+            ),
+            "lfm_item_like_book_share_warp_time_weighted": LFMModel(
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                verbose=0,
+                loss="warp",
+                predict_col_name="predict_lfm_item_like_book_share_warp_time_weighted",
+                cache_dir=lfm_cache_dir,
+            ),
         }
 
         models_timespent = {
@@ -550,6 +605,60 @@ def train(data_dir: Path):
         del models_w2v["timespent"]
         del train_als_timespent
         del models_timespent
+        gc.collect()
+
+        for model_name, model in models_like_book_share_time_weighted.items():
+            print(model_name)
+            model.fit(train_als_like_book_share_item_time_weighted)
+
+            predicts["train_df_cb"] = (
+                predicts["train_df_cb"]
+                .join(model.predict_proba(datasets["train_df_cb"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            predicts["test_df"] = (
+                predicts["test_df"]
+                .join(model.predict_proba(datasets["test_df"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            predicts["test_pairs"] = (
+                predicts["test_pairs"]
+                .join(model.predict_proba(test_pairs.select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            del model
+
+        matrix_factorization_columns.extend([model.predict_col_name for _, model in models_like_book_share_time_weighted.items()])
+        
+        del train_als_like_book_share_item_time_weighted
+        del models_like_book_share_time_weighted
+        gc.collect()
+
+        for model_name, model in models_like_time_weighted.items():
+            print(model_name)
+            model.fit(train_als_like_item_time_weighted)
+
+            predicts["train_df_cb"] = (
+                predicts["train_df_cb"]
+                .join(model.predict_proba(datasets["train_df_cb"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            predicts["test_df"] = (
+                predicts["test_df"]
+                .join(model.predict_proba(datasets["test_df"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            predicts["test_pairs"] = (
+                predicts["test_pairs"]
+                .join(model.predict_proba(test_pairs.select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            del model
+        
+        matrix_factorization_columns = [model.predict_col_name for _, model in models_like_time_weighted.items()]
+
+        del train_als_like_item_time_weighted
+        del models_like_time_weighted
         gc.collect()
 
         train_df_cb_final = join_features(

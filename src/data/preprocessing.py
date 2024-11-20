@@ -97,3 +97,11 @@ def prepare_train_for_als_timespent(df: pl.DataFrame, items_meta_df: pl.DataFram
     logger.debug(f"Output shape: {tuple(df_als_timespent_lazy.shape)}")
 
     return df_als_timespent_lazy
+
+
+def add_log_weight(df: pl.DataFrame) -> pl.DataFrame:
+    return (
+        df
+        .with_columns(rn_targets=pl.first().cum_count().over("user_id"))
+        .with_columns(weight=pl.col("weight") / (pl.col("rn_targets") + 1).log())
+    )
