@@ -43,6 +43,9 @@ class LFMModel(BaseMatrixFactorization):
             n_features=n_features,
             n_epochs=n_epochs,
             random_state=random_state,
+            return_user_bias=True,
+            return_item_bias=True,
+            add_user_and_item_bias=True,
         )
 
         self.user2idx = None
@@ -91,9 +94,6 @@ class LFMModel(BaseMatrixFactorization):
         self.user_embeddings, self.item_embeddings = self.model.get_vectors(dataset=dataset, add_biases=False)
         self.is_fitted = self.model.is_fitted
 
-        del self.model
-        self.model = None
-
         self._save_cache(train_df, items_meta_df_flatten, users_meta_df_flatten)
 
         return self
@@ -106,6 +106,8 @@ class LFMModel(BaseMatrixFactorization):
         assert self.item_embeddings is not None
         assert "user_id" in pairs_df.columns
         assert "item_id" in pairs_df.columns
+        assert self.model is not None
+        assert self.model.is_fitted
 
         catalog = self.item2idx.external_ids
 
@@ -122,10 +124,16 @@ class LFMModel(BaseMatrixFactorization):
             * self.item_embeddings[self.item2idx.convert_to_internal(hot_pairs["item_id"].to_numpy())]
         ).sum(axis=1)
 
+        user_biases = self.model.model.user_biases[self.user2idx.convert_to_internal(hot_pairs["user_id"].to_numpy())]
+        item_biases = self.model.model.item_biases[self.item2idx.convert_to_internal(hot_pairs["item_id"].to_numpy())]
+
         hot_pairs = (
             hot_pairs
             .with_columns(
-                pl.lit(user2item_dist).cast(pl.Float32).alias(self.predict_col_name)
+                pl.lit(user2item_dist).cast(pl.Float32).alias(self.predict_col_name),
+                pl.lit(user2item_dist + user_biases + item_biases).cast(pl.Float32).alias(self.predict_col_name + "_with_user_and_item_bias"),
+                pl.lit(user_biases).cast(pl.Float32).alias(self.predict_col_name + "_only_user_bias"),
+                pl.lit(item_biases).cast(pl.Float32).alias(self.predict_col_name + "_only_item_bias"),
             )
         )
 
@@ -133,7 +141,10 @@ class LFMModel(BaseMatrixFactorization):
             pairs_df
             .join(hot_pairs.select("user_id", "item_id"), how="anti", on=["user_id", "item_id"])
             .with_columns(
-                pl.lit(self.cold_predict).cast(pl.Float32).alias(self.predict_col_name)
+                pl.lit(self.cold_predict).cast(pl.Float32).alias(self.predict_col_name),
+                pl.lit(self.cold_predict).cast(pl.Float32).alias(self.predict_col_name + "_with_user_and_item_bias"),
+                pl.lit(self.cold_predict).cast(pl.Float32).alias(self.predict_col_name + "_only_user_bias"),
+                pl.lit(self.cold_predict).cast(pl.Float32).alias(self.predict_col_name + "_only_item_bias"),
             )
         )
 
