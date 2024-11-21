@@ -279,21 +279,6 @@ def train(data_dir: Path):
             "w2v_n_epochs": w2v_n_epochs,
         })
 
-        # models_w2v = {
-        #     "like": W2VModel(
-        #         n_features=w2v_n_features, 
-        #         n_epochs=w2v_n_epochs, 
-        #         predict_col_name="w2v_predict_like", 
-        #         cache_dir=w2v_cache_dir
-        #     ),
-        #     "timespent": W2VModel(
-        #         n_features=w2v_n_features, 
-        #         n_epochs=w2v_n_epochs, 
-        #         predict_col_name="w2v_predict_timespent", 
-        #         cache_dir=w2v_cache_dir
-        #     ),
-        # }
-
         models_like = {
             "als_item_like": ALSModel(
                 iterations=iterations,
@@ -496,33 +481,6 @@ def train(data_dir: Path):
             del model
         
         matrix_factorization_columns = [model.predict_col_name for _, model in models_like.items()]
-
-        # model_w2v = models_w2v["like"]
-        # model_w2v.fit(train_als_like_item)
-        # predicts["train_df_cb"] = (
-        #     predicts["train_df_cb"]
-        #     .join(model_w2v.predict_proba(
-        #         datasets["train_df_cb"].select("user_id", "item_id"), 
-        #         train_als_like_item
-        #     ), how="left", on=["user_id", "item_id"])
-        # )
-        # predicts["test_df"] = (
-        #     predicts["test_df"]
-        #     .join(model_w2v.predict_proba(
-        #         datasets["test_df"].select("user_id", "item_id"), 
-        #         train_als_like_item
-        #     ), how="left", on=["user_id", "item_id"])
-        # )
-        # predicts["test_pairs"] = (
-        #     predicts["test_pairs"]
-        #     .join(model_w2v.predict_proba(
-        #         test_pairs.select("user_id", "item_id"), 
-        #         train_als_like_item
-        #     ), how="left", on=["user_id", "item_id"])
-        # )
-        # matrix_factorization_columns.append(model_w2v.predict_col_name)
-
-        # del models_w2v["like"]
         del train_als_like_item
         del models_like
         gc.collect()
@@ -576,33 +534,7 @@ def train(data_dir: Path):
             del model
 
         matrix_factorization_columns.extend([model.predict_col_name for _, model in models_timespent.items()])
-
-        # model_w2v = models_w2v["timespent"]
-        # model_w2v.fit(train_als_timespent)
-        # predicts["train_df_cb"] = (
-        #     predicts["train_df_cb"]
-        #     .join(model_w2v.predict_proba(
-        #         datasets["train_df_cb"].select("user_id", "item_id"), 
-        #         train_als_timespent
-        #     ), how="left", on=["user_id", "item_id"])
-        # )
-        # predicts["test_df"] = (
-        #     predicts["test_df"]
-        #     .join(model_w2v.predict_proba(
-        #         datasets["test_df"].select("user_id", "item_id"), 
-        #         train_als_timespent
-        #     ), how="left", on=["user_id", "item_id"])
-        # )
-        # predicts["test_pairs"] = (
-        #     predicts["test_pairs"]
-        #     .join(model_w2v.predict_proba(
-        #         test_pairs.select("user_id", "item_id"), 
-        #         train_als_timespent
-        #     ), how="left", on=["user_id", "item_id"])
-        # )
-        # matrix_factorization_columns.append(model_w2v.predict_col_name)
-
-        # del models_w2v["timespent"]
+        
         del train_als_timespent
         del models_timespent
         gc.collect()
