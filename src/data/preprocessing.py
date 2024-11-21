@@ -102,6 +102,6 @@ def prepare_train_for_als_timespent(df: pl.DataFrame, items_meta_df: pl.DataFram
 def add_log_weight(df: pl.DataFrame) -> pl.DataFrame:
     return (
         df
-        .with_columns(rn_targets=pl.first().cum_count(reverse=True).over("user_id"))
+        .with_columns(rn_targets=pl.first().cum_count().over("user_id"))
         .with_columns(weight=pl.col("weight") / (pl.col("rn_targets") + 1).log())
     )
