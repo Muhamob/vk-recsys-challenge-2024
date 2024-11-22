@@ -21,7 +21,7 @@ from src.models.als import ALSModel
 from src.models.als_source import ALSSource
 from src.models.lightfm import LFMModel
 from src.models.lightfm_source import LightFMSource
-from src.models.w2v_model import W2VModel
+from src.models.ease import EASEModel
 from src.data.preprocessing import add_log_weight, load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share, prepare_train_for_als_timespent
 from src.logger import logger
 
@@ -276,13 +276,13 @@ def train(data_dir: Path):
         lfm_n_features = 128
         lfm_n_epochs = 50
 
-        # w2v
-        w2v_n_features = 128
-        w2v_n_epochs = 10
+        # ease
+        ease_max_items = 30_000
+        ease_regularization = 500.0
 
         als_cache_dir = data_dir / "cache/models/als"
         lfm_cache_dir = data_dir / "cache/models/lightfm"
-        w2v_cache_dir = data_dir / "cache/models/w2v"
+        ease_cache_dir = data_dir / "cache/models/ease"
 
         del datasets["train_df_als"]
         del user_disliked_mean_embeddings
@@ -297,8 +297,8 @@ def train(data_dir: Path):
             "lfm_n_features": lfm_n_features,
             "lfm_n_epochs": lfm_n_epochs,
 
-            "w2v_n_features": w2v_n_features,
-            "w2v_n_epochs": w2v_n_epochs,
+            "ease_max_items": ease_max_items,
+            "ease_regularization": ease_regularization,
         })
 
         models_like = {
@@ -350,6 +350,12 @@ def train(data_dir: Path):
                 verbose=0,
                 predict_col_name="predict_lfm_source_like_warp",
                 cache_dir=lfm_cache_dir,
+            ),
+            "ease_like": EASEModel(
+                predict_col_name="predict_ease_like",
+                cache_dir=ease_cache_dir,
+                max_items=ease_max_items,
+                regularization=ease_regularization,
             ),
         }
 
@@ -428,7 +434,13 @@ def train(data_dir: Path):
                 verbose=0,
                 predict_col_name="predict_lfm_source_like_book_share_warp",
                 cache_dir=lfm_cache_dir,
-            )
+            ),
+            # "ease_like_book_share": EASEModel(
+            #     predict_col_name="predict_ease_like_book_share",
+            #     cache_dir=ease_cache_dir,
+            #     max_items=ease_max_items,
+            #     regularization=ease_regularization,
+            # ),
         }
 
         models_like_book_share_time_weighted = {
@@ -485,19 +497,24 @@ def train(data_dir: Path):
             print(model_name)
             model.fit(train_als_like_item)
 
+            predict_proba = lambda x: model.predict_proba(x) if "ease" not in model_name else model.predict_proba(x, train_als_like_item)
+
             predicts["train_df_cb"] = (
                 predicts["train_df_cb"]
-                .join(model.predict_proba(datasets["train_df_cb"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+                .join(predict_proba(datasets["train_df_cb"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+                # .join(model.predict_proba(datasets["train_df_cb"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
             )
 
             predicts["test_df"] = (
                 predicts["test_df"]
-                .join(model.predict_proba(datasets["test_df"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+                .join(predict_proba(datasets["test_df"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+                # .join(model.predict_proba(datasets["test_df"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
             )
 
             predicts["test_pairs"] = (
                 predicts["test_pairs"]
-                .join(model.predict_proba(test_pairs.select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+                .join(predict_proba(test_pairs.select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+                # .join(model.predict_proba(test_pairs.select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
             )
 
             del model
