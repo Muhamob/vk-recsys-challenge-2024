@@ -209,6 +209,28 @@ def train(data_dir: Path):
         items_meta_df = pl.read_parquet(data_dir / "raw/items_meta.parquet")
         users_meta_df = pl.read_parquet(data_dir / "raw/users_meta.parquet")
 
+        # filter users with no target
+        for ds in ["train_df_cb", "test_df"]:
+            logger.info(f"{ds} rows before filter: {datasets[ds].shape[0]}")
+
+            datasets[ds] = (
+                datasets[ds]
+                .group_by("user_id")
+                .agg(
+                    pl.col("item_id").count().alias("n_items"),
+                    pl.col("like").sum().alias("n_likes"),
+                    pl.col("dislike").sum().alias("n_dislikes"),
+                    pl.col("share").sum().alias("n_share"),
+                    pl.col("bookmarks").sum().alias("n_bookmarks"),
+                )
+                .with_columns(any_target_sum=pl.col("n_likes") + pl.col("n_dislikes") + pl.col("n_share") + pl.col("n_bookmarks"))
+                .filter(pl.col("any_target_sum") > 0)
+                .select("user_id")
+                .join(datasets[ds], how="left", on="user_id")
+            )
+
+            logger.info(f"{ds} rows after filter: {datasets[ds].shape[0]}")
+
         train_als_like_item = prepare_train_for_als_item_like(datasets["train_df_als"])
         train_als_like_book_share_item = prepare_train_for_als_item_like_book_share(datasets["train_df_als"])
         train_als_timespent = prepare_train_for_als_timespent(datasets["train_df_als"], items_meta_df=items_meta_df)
@@ -534,7 +556,7 @@ def train(data_dir: Path):
             del model
 
         matrix_factorization_columns.extend([model.predict_col_name for _, model in models_timespent.items()])
-        
+
         del train_als_timespent
         del models_timespent
         gc.collect()
