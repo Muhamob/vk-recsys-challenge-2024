@@ -52,6 +52,7 @@ class EASEModel(BaseMatrixFactorization):
             df
             .group_by("item_id")
             .len()
+            .sort("len")
             .tail(self.max_items)
             .select("item_id")
             .join(df, how="left", on="item_id")
@@ -63,11 +64,12 @@ class EASEModel(BaseMatrixFactorization):
         items_meta_df_flatten: pl.DataFrame | None = None,
         users_meta_df_flatten: pl.DataFrame | None = None,
     ):
+        train_df = self._preprocess_train_interactions_df(train_df)
+        
         load_cache_result = self._try_load_cache(train_df, items_meta_df_flatten, users_meta_df_flatten)
         if load_cache_result:
             return self
         
-        train_df = self._preprocess_train_interactions_df(train_df)
         dataset = Dataset.construct(interactions_df=train_df.to_pandas())
         self.item_id_map = dataset.item_id_map
         
