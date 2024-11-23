@@ -5,6 +5,7 @@ from tqdm import tqdm
 import numpy as np
 from rectools.models.ease import EASEModel as EASEModel_rectools
 from rectools.dataset import Dataset
+from rectools import Columns
 
 from src.logger import logger
 from src.models.base_matrix_factorization import BaseMatrixFactorization
@@ -65,7 +66,7 @@ class EASEModel(BaseMatrixFactorization):
         users_meta_df_flatten: pl.DataFrame | None = None,
     ):
         train_df = self._preprocess_train_interactions_df(train_df)
-        
+
         load_cache_result = self._try_load_cache(train_df, items_meta_df_flatten, users_meta_df_flatten)
         if load_cache_result:
             return self
@@ -143,3 +144,82 @@ class EASEModel(BaseMatrixFactorization):
         logger.info(f"ALS: Percent of cold pairs: {float(cold_pairs.shape[0]) / pairs_df.shape[0]}")
 
         return pl.concat([hot_pairs, cold_pairs])
+
+
+class EASESourceModel(EASEModel):
+    def __init__(
+        self, 
+        items_meta_df: pl.DataFrame,
+        regularization: float = 500.0,
+        max_items: int = 30000,
+        predict_col_name: str = "predict",
+        cold_predict: float = -1.0,
+        random_state: int = 42,
+        cache_dir: Path | None = None,
+    ):
+        self.items_meta_df = items_meta_df.select("item_id", "source_id")
+        super().__init__(
+            regularization=regularization,
+            max_items=max_items,
+            predict_col_name=predict_col_name,
+            cold_predict=cold_predict,
+            random_state=random_state,
+            cache_dir=cache_dir,
+        )
+
+    def _preprocess_source_interactions(self, df: pl.DataFrame) -> pl.DataFrame:
+        return (
+            df
+            .join(self.items_meta_df, how="inner", on="item_id")
+            .drop("item_id")
+            .rename({"source_id": "item_id"})
+            .group_by("user_id", "item_id")
+            .agg(
+                pl.col(Columns.Datetime).max().alias(Columns.Datetime),
+                pl.col(Columns.Weight).sum().alias(Columns.Weight),
+            )
+        )
+
+    def fit(
+        self, 
+        train_df: pl.DataFrame,
+        items_meta_df_flatten: pl.DataFrame | None = None,
+        users_meta_df_flatten: pl.DataFrame | None = None,
+    ):
+        train_df = self._preprocess_source_interactions(train_df)
+
+        return super().fit(train_df, None, None)
+    
+    def predict_proba(self, pairs_df: pl.DataFrame, interactions_df: pl.DataFrame) -> pl.DataFrame:
+        pairs_source_id = (
+            pairs_df
+            .join(self.items_meta_df, how="left", on="item_id")
+        )
+
+        uniq_source_pairs_df = (
+            pairs_source_id
+            .drop_nulls(["user_id", "source_id"])
+            .unique(["user_id", "source_id"])
+            .drop("item_id")
+            .rename({"source_id": "item_id"})
+        )
+        logger.debug(f"uniq_source_pairs_df shape: {uniq_source_pairs_df.shape}; columns: {uniq_source_pairs_df.columns}")
+        
+        # [user_id, item_id-по факту source_id]
+
+        preproc_interactions_df = self._preprocess_source_interactions(interactions_df)
+        uniq_predict = super().predict_proba(uniq_source_pairs_df, preproc_interactions_df).rename({"item_id": "source_id"})
+        logger.debug(f"uniq_predict shape: {uniq_predict.shape}; columns: {uniq_predict.columns}")
+
+        predict = (
+            pairs_source_id
+            .select("user_id", "item_id", "source_id")
+            .join(uniq_predict, how="inner", on=["user_id", "source_id"])
+            .drop("source_id")
+            .with_columns(
+                pl.col(self.predict_col_name).fill_null(self.cold_predict)
+            )
+        )
+        logger.debug(f"predict shape: {predict.shape}; columns: {predict.columns}")
+
+        return predict
