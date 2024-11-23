@@ -278,6 +278,7 @@ def train(data_dir: Path):
 
         # ease
         ease_max_items = 30_000
+        ease_max_source_ids = 5000
         ease_regularization = 500.0
 
         als_cache_dir = data_dir / "cache/models/als"
@@ -299,6 +300,7 @@ def train(data_dir: Path):
 
             "ease_max_items": ease_max_items,
             "ease_regularization": ease_regularization,
+            "ease_max_source_ids": ease_max_source_ids,
         })
 
         models_like = {
@@ -361,7 +363,7 @@ def train(data_dir: Path):
                 items_meta_df=items_meta_df,
                 predict_col_name="predict_ease_source_like",
                 cache_dir=ease_cache_dir,
-                max_items=ease_max_items,
+                max_items=ease_max_source_ids,
                 regularization=ease_regularization,
             ),
         }
@@ -452,7 +454,7 @@ def train(data_dir: Path):
                 items_meta_df=items_meta_df,
                 predict_col_name="predict_ease_source_like_book_share",
                 cache_dir=ease_cache_dir,
-                max_items=ease_max_items,
+                max_items=ease_max_source_ids,
                 regularization=ease_regularization,
             ),
         }
