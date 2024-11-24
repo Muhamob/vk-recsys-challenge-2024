@@ -277,9 +277,9 @@ def train(data_dir: Path):
         lfm_n_epochs = 50
 
         # ease
-        ease_max_items = 30_000
+        ease_max_items = 35_000
         ease_max_source_ids = 5000
-        ease_regularization = 500.0
+        ease_regularization = 2000.0
 
         als_cache_dir = data_dir / "cache/models/als"
         lfm_cache_dir = data_dir / "cache/models/lightfm"
