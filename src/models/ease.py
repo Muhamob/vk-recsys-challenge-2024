@@ -53,7 +53,7 @@ class EASEModel(BaseMatrixFactorization):
             df
             .group_by("item_id")
             .len()
-            .sort("len")
+            .sort(["len", "item_id"])  # добавил сортировку по item_id, чтобы были воспроизводимые результаты
             .tail(self.max_items)
             .select("item_id")
             .join(df, how="left", on="item_id")

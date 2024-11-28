@@ -193,7 +193,8 @@ def cli(level):
 
 @cli.command()
 @click.option("--data-dir", type=click.Path(exists=True, file_okay=False), default="./data/")
-def train(data_dir: Path):
+@click.option("--save-datasets", type=click.BOOL, default=False)
+def train(data_dir: Path, save_datasets: bool):
     # PYTHONPATH=. python scripts/train.py --level debug train --data-dir ./data
     mlflow.set_experiment("vk")
     mlflow.set_tracking_uri("http://127.0.0.1:8080") 
@@ -699,6 +700,8 @@ def train(data_dir: Path):
         feature_columns_raw = [c for c in test_pairs_final.columns if c not in ("user_id", "item_id")]
         
         train_df_cb_final, feature_columns = add_poly_features(train_df_cb_final, feature_columns_raw)
+        if save_datasets:
+            train_df_cb_final.write_parquet("./data/catboost_dataset_train.parquet")
         train_df_cb_final = train_df_cb_final.to_pandas()
 
         mlflow.log_params({
@@ -730,6 +733,8 @@ def train(data_dir: Path):
         del train_df_cb_final
 
         test_df_final, _ = add_poly_features(test_df_final, feature_columns_raw)
+        if save_datasets:
+            test_df_final.write_parquet("./data/catboost_dataset_test.parquet")
         test_df_final = test_df_final.to_pandas()
         
         test_predict = cb_model.predict(test_df_final[feature_columns])
