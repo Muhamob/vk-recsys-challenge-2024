@@ -18,13 +18,13 @@ def load_data(data_dir: Path = Path("../data/processed/")) -> dict[str, pl.DataF
     return data
 
 
-def prepare_train_for_als_item_like(df: pl.DataFrame) -> pl.DataFrame:
+def prepare_train_for_als_item_like(df: pl.DataFrame, like_weight: float = 1.0) -> pl.DataFrame:
     logger.debug(f"Preprocessing data for item als. Input size: {df.shape[0]}")
 
     train_df_als_like = (
         df
         .filter((pl.col("like") + pl.col("dislike")) >= 1)
-        .with_columns(weight=pl.col("like").cast(pl.Int8) - pl.col("dislike").cast(pl.Int8))
+        .with_columns(weight=pl.col("like").cast(pl.Int8) * like_weight - pl.col("dislike").cast(pl.Int8))
         .select("user_id", "item_id", pl.col("weight").alias(Columns.Weight), pl.lit(1).alias(Columns.Datetime))
     )
 

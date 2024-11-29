@@ -234,8 +234,9 @@ def train(data_dir: Path, save_datasets: bool):
 
             logger.info(f"{ds} rows after filter: {datasets[ds].shape[0]}")
 
-        train_als_like_item = prepare_train_for_als_item_like(datasets["train_df_als"])
-        train_als_like_book_share_item = prepare_train_for_als_item_like_book_share(datasets["train_df_als"])
+        like_weight_item_like = 10
+        train_als_like_item = prepare_train_for_als_item_like(datasets["train_df_als"], like_weight=like_weight_item_like)
+        train_als_like_book_share_item = prepare_train_for_als_item_like_book_share(datasets["train_df_als"], like_weight=like_weight_item_like)
         train_als_timespent = prepare_train_for_als_timespent(datasets["train_df_als"], items_meta_df=items_meta_df)
 
         train_als_like_item_time_weighted = add_log_weight(train_als_like_item)
@@ -304,6 +305,8 @@ def train(data_dir: Path, save_datasets: bool):
             "ease_max_items": ease_max_items,
             "ease_regularization": ease_regularization,
             "ease_max_source_ids": ease_max_source_ids,
+
+            "like_weight_item_like": like_weight_item_like,
         })
 
         models_like = {
