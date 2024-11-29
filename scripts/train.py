@@ -116,13 +116,14 @@ def join_features(
                 for col in age_features
             ])
             .with_columns(*[
-                (pl.col("age") - pl.col(col)).alias(f"{col}_diff_abs")
+                (pl.col("age") - pl.col(col)).abs().alias(f"{col}_diff_abs")
                 for col in age_features
             ])
         )
+        print([col for col in df.columns if "age" in col])
         
         gender_features = [col for col in df.columns if "gender" in col]
-        gender_features = [col for col in age_features if col != "gender"]
+        gender_features = [col for col in gender_features if col != "gender"]
         df = (
             df
             .with_columns(*[
@@ -134,6 +135,7 @@ def join_features(
                 for col in gender_features
             ])
         )
+        print([col for col in df.columns if "gender" in col])
 
     # extra features
     df = (
@@ -145,7 +147,7 @@ def join_features(
 
     return (
         df
-        .sort("user_id")
+        .sort("user_id", "item_id")
     )
 
 
