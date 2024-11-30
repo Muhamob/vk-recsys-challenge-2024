@@ -5,6 +5,55 @@ from src.models.lightfm import LFMModel
 from src.logger import logger
 
 
+class LightFMSourceAdd(LFMModel):
+    def __init__(
+        self, 
+        items_meta_df: pl.DataFrame,
+        n_features: int = 10,
+        n_epochs: int = 10,
+        loss: str = "bpr",
+        predict_col_name: str = "predict",
+        cold_predict: float = -1.0,
+        verbose: int = 0,
+        random_state: int = 42,
+        cache_dir: Path | None = None,
+    ):
+        super().__init__(
+            n_features=n_features,
+            n_epochs=n_epochs,
+            loss=loss,
+            predict_col_name=predict_col_name,
+            cold_predict=cold_predict,
+            verbose=verbose,
+            random_state=random_state,
+            cache_dir=cache_dir,
+        )
+
+        self.items_meta_df = items_meta_df.select("item_id", "source_id")
+
+    def fit(
+        self, 
+        train_df: pl.DataFrame, 
+        items_meta_df_flatten: pl.DataFrame | None = None, 
+        users_meta_df_flatten: pl.DataFrame | None = None
+    ):
+        if (items_meta_df_flatten is not None) or (users_meta_df_flatten is not None):
+            logger.warning("items_meta_df_flatten or users_meta_df_flatten is not None. However it is not used in this model")
+        
+        train_df = pl.concat([
+            train_df,
+            (
+                train_df
+                .join(self.items_meta_df.select("item_id", "source_id"), on="item_id", how="inner")
+                .drop("item_id")
+                .group_by("user_id", pl.col("source_id").alias("item_id") + 1_000_000)
+                .agg(pl.col("weight").sum(), pl.max("datetime"))
+            )
+        ])
+        
+        return super().fit(train_df, None, None)
+
+
 class LightFMSource(LFMModel):
     def __init__(
         self, 

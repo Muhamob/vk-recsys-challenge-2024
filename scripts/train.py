@@ -20,7 +20,7 @@ from src.metrics import calc_user_auc
 from src.models.als import ALSModel
 from src.models.als_source import ALSSource
 from src.models.lightfm import LFMModel
-from src.models.lightfm_source import LightFMSource
+from src.models.lightfm_source import LightFMSource, LightFMSourceAdd
 from src.models.ease import EASEModel, EASESourceModel
 from src.data.preprocessing import add_log_weight, load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share, prepare_train_for_als_timespent
 from src.logger import logger
@@ -370,6 +370,23 @@ def train(data_dir: Path, save_datasets: bool):
                 predict_col_name="predict_lfm_source_like_warp",
                 cache_dir=lfm_cache_dir,
             ),
+            "lfm_source_add_like": LightFMSourceAdd(
+                items_meta_df=items_meta_df,
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                verbose=0,
+                predict_col_name="predict_lfm_source_add_like",
+                cache_dir=lfm_cache_dir,
+            ),
+            "lfm_source_add_like_warp": LightFMSourceAdd(
+                items_meta_df=items_meta_df,
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                loss="warp",
+                verbose=0,
+                predict_col_name="predict_lfm_source_add_like_warp",
+                cache_dir=lfm_cache_dir,
+            ),
             "ease_like": EASEModel(
                 predict_col_name="predict_ease_like",
                 cache_dir=ease_cache_dir,
@@ -459,6 +476,23 @@ def train(data_dir: Path, save_datasets: bool):
                 loss="warp",
                 verbose=0,
                 predict_col_name="predict_lfm_source_like_book_share_warp",
+                cache_dir=lfm_cache_dir,
+            ),
+            "lfm_source_add_like_book_share": LightFMSourceAdd(
+                items_meta_df=items_meta_df,
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                verbose=0,
+                predict_col_name="predict_lfm_source_add_like_book_share",
+                cache_dir=lfm_cache_dir,
+            ),
+            "lfm_source_add_like_book_share_warp": LightFMSourceAdd(
+                items_meta_df=items_meta_df,
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                loss="warp",
+                verbose=0,
+                predict_col_name="predict_lfm_source_add_like_book_share_warp",
                 cache_dir=lfm_cache_dir,
             ),
             "ease_like_book_share": EASEModel(
