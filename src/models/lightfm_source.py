@@ -40,7 +40,7 @@ class LightFMSourceAdd(LFMModel):
         if (items_meta_df_flatten is not None) or (users_meta_df_flatten is not None):
             logger.warning("items_meta_df_flatten or users_meta_df_flatten is not None. However it is not used in this model")
 
-        train_df["weight"] = train_df["weight"].cast(pl.Float32)
+        train_df = train_df.with_columns(pl.col("weight").cast(pl.Float32))
 
         train_df = pl.concat([
             train_df,
