@@ -141,7 +141,18 @@ def join_features(
     df = (
         df
         .with_columns(
-            (pl.col("user_like_perc") * pl.col("mean_like")).alias("user2item_like_perc")
+            (pl.col("user_like_perc") * pl.col("mean_like")).alias("user2item_like_perc"),
+            (
+                pl.col("mean_gender").sub(1).pow(pl.col("gender").sub(1))
+                * pl.col("mean_gender").sub(2).mul(-1).pow(pl.col("gender").sub(2).mul(-1))
+            ).alias("gender_distr"),
+            (
+                pl.col("mean_gender_source").sub(1).pow(pl.col("gender").sub(1))
+                * pl.col("mean_gender_source").sub(2).mul(-1).pow(pl.col("gender").sub(2).mul(-1))
+            ).alias("gender_source_distr"),
+        )
+        .with_columns(
+            pl.col("user2item_like_perc").mul("gender_distr").alias("user2item_like_perc_gender")
         )
     )
 
