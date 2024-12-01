@@ -109,9 +109,9 @@ def add_log_weight(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def train_test_split_by_user_id(df: pl.DataFrame, test_size: float = 0.2):
-    val_user_ids, test_user_ids = train_test_split(df["user_id"].unique().sort().to_numpy(), test_size=test_size, random_state=42)
+    test_user_ids, val_user_ids = train_test_split(df["user_id"].unique().sort().to_numpy(), test_size=test_size, random_state=42)
 
     val_user_ids = pl.DataFrame({"user_id": val_user_ids})
     test_user_ids = pl.DataFrame({"user_id": test_user_ids})
 
-    return val_user_ids.join(df, how="left", on="user_id"), test_user_ids.join(df, how="left", on="user_id")
+    return test_user_ids.join(df, how="left", on="user_id"), val_user_ids.join(df, how="left", on="user_id")

@@ -716,6 +716,8 @@ def train(data_dir: Path, save_datasets: bool):
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
         )
 
+        test_df_final, val_df_final = train_test_split_by_user_id(test_df_final, 0.2)
+
         test_pairs_final = join_features(
             test_pairs,
             predicts["test_pairs"],
@@ -769,15 +771,29 @@ def train(data_dir: Path, save_datasets: bool):
 
         train_pool = get_cb_pool(train_df_cb_final, feature_columns)
 
+        val_df_final, _ = add_poly_features(val_df_final, feature_columns_raw)
+        if save_datasets:
+            val_df_final.write_parquet("./data/catboost_dataset_val.parquet")
+        val_df_final = val_df_final.to_pandas()
+
+        val_df_final = pd.merge(
+            val_df_final,
+            item_embeddings_df,
+            on="item_id", how="left"
+        )
+        val_pool = get_cb_pool(val_df_final, feature_columns)
+
         logger.info("training catboost model")
         cb_model = CatBoostRanker(
             iterations=cb_iterations, 
             depth=cb_depth, 
             random_seed=32, 
-            verbose=0, 
-            loss_function=cb_loss_function
+            verbose=50, 
+            loss_function=cb_loss_function,
+            eval_metric="QueryAUC:type=Ranking",
+            early_stopping_rounds=50,
         )
-        cb_model.fit(train_pool)
+        cb_model.fit(train_pool, eval_set=val_pool)
 
         del train_df_cb_final
         del train_pool
