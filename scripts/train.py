@@ -399,19 +399,19 @@ def train(data_dir: Path, save_datasets: bool):
                 predict_col_name="predict_lfm_source_add_like_warp",
                 cache_dir=lfm_cache_dir,
             ),
-            "ease_like": EASEModel(
-                predict_col_name="predict_ease_like",
-                cache_dir=ease_cache_dir,
-                max_items=ease_max_items,
-                regularization=ease_regularization,
-            ),
-            "ease_source_like": EASESourceModel(
-                items_meta_df=items_meta_df,
-                predict_col_name="predict_ease_source_like",
-                cache_dir=ease_cache_dir,
-                max_items=ease_max_source_ids,
-                regularization=ease_regularization,
-            ),
+            # "ease_like": EASEModel(
+            #     predict_col_name="predict_ease_like",
+            #     cache_dir=ease_cache_dir,
+            #     max_items=ease_max_items,
+            #     regularization=ease_regularization,
+            # ),
+            # "ease_source_like": EASESourceModel(
+            #     items_meta_df=items_meta_df,
+            #     predict_col_name="predict_ease_source_like",
+            #     cache_dir=ease_cache_dir,
+            #     max_items=ease_max_source_ids,
+            #     regularization=ease_regularization,
+            # ),
         }
 
         models_like_time_weighted = {
@@ -507,19 +507,19 @@ def train(data_dir: Path, save_datasets: bool):
                 predict_col_name="predict_lfm_source_add_like_book_share_warp",
                 cache_dir=lfm_cache_dir,
             ),
-            "ease_like_book_share": EASEModel(
-                predict_col_name="predict_ease_like_book_share",
-                cache_dir=ease_cache_dir,
-                max_items=ease_max_items,
-                regularization=ease_regularization,
-            ),
-            "ease_source_like_book_share": EASESourceModel(
-                items_meta_df=items_meta_df,
-                predict_col_name="predict_ease_source_like_book_share",
-                cache_dir=ease_cache_dir,
-                max_items=ease_max_source_ids,
-                regularization=ease_regularization,
-            ),
+            # "ease_like_book_share": EASEModel(
+            #     predict_col_name="predict_ease_like_book_share",
+            #     cache_dir=ease_cache_dir,
+            #     max_items=ease_max_items,
+            #     regularization=ease_regularization,
+            # ),
+            # "ease_source_like_book_share": EASESourceModel(
+            #     items_meta_df=items_meta_df,
+            #     predict_col_name="predict_ease_source_like_book_share",
+            #     cache_dir=ease_cache_dir,
+            #     max_items=ease_max_source_ids,
+            #     regularization=ease_regularization,
+            # ),
         }
 
         models_like_book_share_time_weighted = {
