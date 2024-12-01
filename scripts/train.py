@@ -290,6 +290,7 @@ def train(data_dir: Path, save_datasets: bool):
         # lfm
         lfm_n_features = 128
         lfm_n_epochs = 50
+        lfm_source_add_n_epochs = 25
 
         # ease
         ease_max_items = 35_000
@@ -312,6 +313,7 @@ def train(data_dir: Path, save_datasets: bool):
 
             "lfm_n_features": lfm_n_features,
             "lfm_n_epochs": lfm_n_epochs,
+            "lfm_source_add_n_epochs": lfm_source_add_n_epochs,
 
             "ease_max_items": ease_max_items,
             "ease_regularization": ease_regularization,
@@ -373,7 +375,7 @@ def train(data_dir: Path, save_datasets: bool):
             "lfm_source_add_like": LightFMSourceAdd(
                 items_meta_df=items_meta_df,
                 n_features=lfm_n_features, 
-                n_epochs=lfm_n_epochs, 
+                n_epochs=lfm_source_add_n_epochs, 
                 verbose=0,
                 predict_col_name="predict_lfm_source_add_like",
                 cache_dir=lfm_cache_dir,
@@ -381,7 +383,7 @@ def train(data_dir: Path, save_datasets: bool):
             "lfm_source_add_like_warp": LightFMSourceAdd(
                 items_meta_df=items_meta_df,
                 n_features=lfm_n_features, 
-                n_epochs=lfm_n_epochs, 
+                n_epochs=lfm_source_add_n_epochs, 
                 loss="warp",
                 verbose=0,
                 predict_col_name="predict_lfm_source_add_like_warp",
@@ -481,7 +483,7 @@ def train(data_dir: Path, save_datasets: bool):
             "lfm_source_add_like_book_share": LightFMSourceAdd(
                 items_meta_df=items_meta_df,
                 n_features=lfm_n_features, 
-                n_epochs=lfm_n_epochs, 
+                n_epochs=lfm_source_add_n_epochs, 
                 verbose=0,
                 predict_col_name="predict_lfm_source_add_like_book_share",
                 cache_dir=lfm_cache_dir,
@@ -489,7 +491,7 @@ def train(data_dir: Path, save_datasets: bool):
             "lfm_source_add_like_book_share_warp": LightFMSourceAdd(
                 items_meta_df=items_meta_df,
                 n_features=lfm_n_features, 
-                n_epochs=lfm_n_epochs, 
+                n_epochs=lfm_source_add_n_epochs, 
                 loss="warp",
                 verbose=0,
                 predict_col_name="predict_lfm_source_add_like_book_share_warp",
