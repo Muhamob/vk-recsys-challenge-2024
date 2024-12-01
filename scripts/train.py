@@ -10,9 +10,10 @@ import logging
 import polars as pl
 import numpy as np
 from tqdm import tqdm
-from catboost import CatBoostClassifier, CatBoostRanker
+from catboost import CatBoostClassifier, CatBoostRanker, Pool
 import click
 import mlflow
+import pandas as pd
 
 from src.data.item_stats import get_item_stats
 from src.data.user_stats import get_user_stats
@@ -191,6 +192,15 @@ def add_poly_features(df: pl.DataFrame, feature_columns: Sequence[str]) -> tuple
     #     ),
     #     [*feature_columns, *degree_2_features_names]
     # )
+
+
+def get_cb_pool(df, feature_columns, add_labels: bool = True) -> Pool:
+    return Pool(
+        data=df[feature_columns],
+        label=df["target"] if add_labels else None,
+        group_id=df["user_id"],
+        embedding_features=["embeddings", ]
+    )
 
 
 @click.group()
@@ -739,7 +749,7 @@ def train(data_dir: Path, save_datasets: bool):
 
         del item_stats
         del source_stats
-        del items_meta_df
+        # del items_meta_df
         del users_meta_df
         del user_stats
         del train_df_cb_sim_features
@@ -756,12 +766,6 @@ def train(data_dir: Path, save_datasets: bool):
             train_df_cb_final.write_parquet("./data/catboost_dataset_train.parquet")
         train_df_cb_final = train_df_cb_final.to_pandas()
 
-        mlflow.log_params({
-            "feature_columns_raw": feature_columns_raw,
-            "feature_columns": feature_columns,
-            "len_feature_columns": len(feature_columns),
-        })
-
         cb_iterations = 1000
         cb_depth = 6
 
@@ -772,6 +776,19 @@ def train(data_dir: Path, save_datasets: bool):
             "cb_loss_function": cb_loss_function,
         })
 
+        item_embeddings_df = items_meta_df[["item_id", "embeddings"]].to_pandas()
+
+        train_df_cb_final = pd.merge(
+            train_df_cb_final,
+            item_embeddings_df,
+            on="item_id", how="left"
+        )
+
+        feature_columns = list(feature_columns)
+        feature_columns.append("embeddings")
+
+        train_pool = get_cb_pool(train_df_cb_final, feature_columns)
+
         logger.info("training catboost model")
         cb_model = CatBoostRanker(
             iterations=cb_iterations, 
@@ -780,16 +797,24 @@ def train(data_dir: Path, save_datasets: bool):
             verbose=0, 
             loss_function=cb_loss_function
         )
-        cb_model.fit(train_df_cb_final[feature_columns], train_df_cb_final["target"], group_id=train_df_cb_final["user_id"])
+        cb_model.fit(train_pool)
 
         del train_df_cb_final
+        del train_pool
 
         test_df_final, _ = add_poly_features(test_df_final, feature_columns_raw)
         if save_datasets:
             test_df_final.write_parquet("./data/catboost_dataset_test.parquet")
         test_df_final = test_df_final.to_pandas()
+
+        test_df_final = pd.merge(
+            test_df_final,
+            item_embeddings_df,
+            on="item_id", how="left"
+        )
+        test_pool = get_cb_pool(test_df_final, feature_columns)
         
-        test_predict = cb_model.predict(test_df_final[feature_columns])
+        test_predict = cb_model.predict(test_pool)
         test_df_final_prediction = (
             pl.from_pandas(test_df_final[["user_id", "target", "item_id", *matrix_factorization_columns]])
             .with_columns(
@@ -798,6 +823,7 @@ def train(data_dir: Path, save_datasets: bool):
         )
 
         del test_df_final
+        del test_pool
 
         metric_value = calc_user_auc(
             df=test_df_final_prediction,
@@ -817,14 +843,26 @@ def train(data_dir: Path, save_datasets: bool):
 
         test_pairs_final, _ = add_poly_features(test_pairs_final, feature_columns_raw)
         test_pairs_final = test_pairs_final.to_pandas()
+        test_pairs_final = pd.merge(
+            test_pairs_final,
+            item_embeddings_df,
+            on="item_id", how="left"
+        )
+        test_pairs_pool = get_cb_pool(test_pairs_final, feature_columns)
 
-        submission_predict = cb_model.predict(test_pairs_final[feature_columns])
+        submission_predict = cb_model.predict(test_pairs_pool)
         test_pairs_final["predict"] = submission_predict
         submission_path = data_dir / f'submissions/{int(datetime.now().timestamp())}_submission.csv'
         submission_path = submission_path.as_posix()
         test_pairs_final[["user_id", "item_id", "predict"]].to_csv(submission_path, index=False)
 
         mlflow.log_param("submission_path", submission_path)
+
+        mlflow.log_params({
+            "feature_columns_raw": feature_columns_raw,
+            "feature_columns": feature_columns,
+            "len_feature_columns": len(feature_columns),
+        })
 
 
 if __name__ == "__main__":
