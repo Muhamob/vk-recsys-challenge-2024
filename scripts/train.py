@@ -23,7 +23,14 @@ from src.models.als_source import ALSSource
 from src.models.lightfm import LFMModel
 from src.models.lightfm_source import LightFMSource, LightFMSourceAdd
 from src.models.ease import EASEModel, EASESourceModel
-from src.data.preprocessing import add_log_weight, load_data, prepare_train_for_als_item_like, prepare_train_for_als_item_like_book_share, prepare_train_for_als_timespent
+from src.data.preprocessing import (
+    add_log_weight, 
+    load_data, 
+    prepare_train_for_als_item_like, 
+    prepare_train_for_als_item_like_book_share, 
+    prepare_train_for_als_timespent,
+    train_test_split_by_user_id
+)
 from src.logger import logger
 
 
@@ -165,33 +172,6 @@ def join_features(
 
 def add_poly_features(df: pl.DataFrame, feature_columns: Sequence[str]) -> tuple[pl.DataFrame, Sequence[str]]:
     return (df, feature_columns)
-    # logger.info(f"Adding poly features, input df: n_rows {df.shape[0]} n_features {len(feature_columns)}")
-    
-    # user2item_features = [col for col in feature_columns if "predict_" in col]
-    # other_features = [col for col in feature_columns if col not in user2item_features]
-    # degree_2_features_names = [
-    #     f"{col1}___{col2}" for col1, col2 in product(user2item_features, user2item_features)
-    #     if col1 != col2 and col1 < col2
-    # ]
-    
-    # logger.info(f"Number of user2item features: {len(user2item_features)}, other features {len(other_features)}, degree 2 features {len(degree_2_features_names)}")
-
-    # degree_2_features = [
-    #     (pl.col(col1) * pl.col(col2)).alias(f"{col1}___{col2}") 
-    #     for col1, col2 in [
-    #         cols.split("___") for cols in degree_2_features_names
-    #     ]
-    # ]
-
-    # logger.info(f"Number of out features {len(feature_columns) + len(degree_2_features)}")
-
-    # return (
-    #     (
-    #         df
-    #         .with_columns(*degree_2_features)
-    #     ),
-    #     [*feature_columns, *degree_2_features_names]
-    # )
 
 
 def get_cb_pool(df, feature_columns, add_labels: bool = True) -> Pool:
@@ -399,19 +379,19 @@ def train(data_dir: Path, save_datasets: bool):
                 predict_col_name="predict_lfm_source_add_like_warp",
                 cache_dir=lfm_cache_dir,
             ),
-            # "ease_like": EASEModel(
-            #     predict_col_name="predict_ease_like",
-            #     cache_dir=ease_cache_dir,
-            #     max_items=ease_max_items,
-            #     regularization=ease_regularization,
-            # ),
-            # "ease_source_like": EASESourceModel(
-            #     items_meta_df=items_meta_df,
-            #     predict_col_name="predict_ease_source_like",
-            #     cache_dir=ease_cache_dir,
-            #     max_items=ease_max_source_ids,
-            #     regularization=ease_regularization,
-            # ),
+            "ease_like": EASEModel(
+                predict_col_name="predict_ease_like",
+                cache_dir=ease_cache_dir,
+                max_items=ease_max_items,
+                regularization=ease_regularization,
+            ),
+            "ease_source_like": EASESourceModel(
+                items_meta_df=items_meta_df,
+                predict_col_name="predict_ease_source_like",
+                cache_dir=ease_cache_dir,
+                max_items=ease_max_source_ids,
+                regularization=ease_regularization,
+            ),
         }
 
         models_like_time_weighted = {
@@ -507,19 +487,19 @@ def train(data_dir: Path, save_datasets: bool):
                 predict_col_name="predict_lfm_source_add_like_book_share_warp",
                 cache_dir=lfm_cache_dir,
             ),
-            # "ease_like_book_share": EASEModel(
-            #     predict_col_name="predict_ease_like_book_share",
-            #     cache_dir=ease_cache_dir,
-            #     max_items=ease_max_items,
-            #     regularization=ease_regularization,
-            # ),
-            # "ease_source_like_book_share": EASESourceModel(
-            #     items_meta_df=items_meta_df,
-            #     predict_col_name="predict_ease_source_like_book_share",
-            #     cache_dir=ease_cache_dir,
-            #     max_items=ease_max_source_ids,
-            #     regularization=ease_regularization,
-            # ),
+            "ease_like_book_share": EASEModel(
+                predict_col_name="predict_ease_like_book_share",
+                cache_dir=ease_cache_dir,
+                max_items=ease_max_items,
+                regularization=ease_regularization,
+            ),
+            "ease_source_like_book_share": EASESourceModel(
+                items_meta_df=items_meta_df,
+                predict_col_name="predict_ease_source_like_book_share",
+                cache_dir=ease_cache_dir,
+                max_items=ease_max_source_ids,
+                regularization=ease_regularization,
+            ),
         }
 
         models_like_book_share_time_weighted = {

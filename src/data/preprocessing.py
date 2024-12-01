@@ -2,6 +2,7 @@ from pathlib import Path
 
 import polars as pl
 from rectools import Columns
+from sklearn.model_selection import train_test_split
 
 from src.logger import logger
 
@@ -105,3 +106,12 @@ def add_log_weight(df: pl.DataFrame) -> pl.DataFrame:
         .with_columns(rn_targets=pl.first().cum_count().over("user_id"))
         .with_columns(weight=pl.col("weight") / (pl.col("rn_targets") + 1).log())
     )
+
+
+def train_test_split_by_user_id(df: pl.DataFrame, test_size: float = 0.2):
+    val_user_ids, test_user_ids = train_test_split(df["user_id"].unique().sort().to_numpy(), test_size=test_size, random_state=42)
+
+    val_user_ids = pl.DataFrame({"user_id": val_user_ids})
+    test_user_ids = pl.DataFrame({"user_id": test_user_ids})
+
+    return val_user_ids.join(df, how="left", on="user_id"), test_user_ids.join(df, how="left", on="user_id")
