@@ -848,7 +848,7 @@ def train(data_dir: Path, save_datasets: bool):
             item_embeddings_df,
             on="item_id", how="left"
         )
-        test_pairs_pool = get_cb_pool(test_pairs_final, feature_columns)
+        test_pairs_pool = get_cb_pool(test_pairs_final, feature_columns, False)
 
         submission_predict = cb_model.predict(test_pairs_pool)
         test_pairs_final["predict"] = submission_predict
