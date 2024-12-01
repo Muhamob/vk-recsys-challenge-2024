@@ -300,7 +300,7 @@ def train(data_dir: Path, save_datasets: bool):
         # lfm
         lfm_n_features = 128
         lfm_n_epochs = 50
-        lfm_source_add_n_epochs = 25
+        lfm_source_add_n_epochs = 50
 
         # ease
         ease_max_items = 35_000
