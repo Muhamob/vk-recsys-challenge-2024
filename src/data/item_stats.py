@@ -1,5 +1,7 @@
 import polars as pl
 
+from src.logger import logger
+
 
 def get_item_stats(
     train_df: pl.DataFrame,
@@ -69,7 +71,12 @@ def get_user2source_stats(
     items_meta_df: pl.DataFrame,
     min_interactions_threshold: int = 10
 ) -> pl.DataFrame:
-    return (
+    logger.debug("Calculate train interactions")
+    total_interactions = df.group_by("user_id").len().select("user_id", pl.col("len").alias("n_total_interactions"))
+    logger.debug("Done calculate train interactions")
+
+    logger.debug("Calculate user 2 source stats")
+    result = (
         df.lazy()
         .join(items_meta_df.lazy(), on="item_id", how="inner")
         .with_columns(((pl.col("like") + pl.col("share") + pl.col("bookmarks")) > 0).alias("is_positive"))
@@ -80,7 +87,15 @@ def get_user2source_stats(
             pl.col("dislike").cast(int).mean().alias("source_disacceptance"),
             (pl.col("timespent") / pl.col("duration")).mean().alias("mean_source_timespent_ratio")
         )
+        .join(total_interactions.lazy(), on="user_id", how="inner")
+        .with_columns(
+            pl.col("n_interactions").truediv("n_total_interactions").alias("source_perc")
+        )
         .filter(pl.col("n_interactions") >= min_interactions_threshold)
-        .drop("n_interactions")
+        .drop("n_interactions", "n_total_interactions")
         .collect()
     )
+
+    logger.debug("Done calculate user 2 source stats")
+
+    return result

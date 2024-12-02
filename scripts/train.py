@@ -779,6 +779,7 @@ def train(data_dir: Path, save_datasets: bool):
 
         train_pool = get_cb_pool(train_df_cb_final, feature_columns)
 
+        val_pool = None
         if val_df_final is not None:
             val_df_final, _ = add_poly_features(val_df_final, feature_columns_raw)
             if save_datasets:
