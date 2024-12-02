@@ -62,3 +62,25 @@ def get_item_stats(
     )
 
     return item_features_extra
+
+
+def get_user2source_stats(
+    df: pl.DataFrame, 
+    items_meta_df: pl.DataFrame,
+    min_interactions_threshold: int = 10
+) -> pl.DataFrame:
+    return (
+        df.lazy()
+        .join(items_meta_df.lazy(), on="item_id", how="inner")
+        .with_columns(((pl.col("like") + pl.col("share") + pl.col("bookmarks")) > 0).alias("is_positive"))
+        .group_by("user_id", "source_id")
+        .agg(
+            pl.first().len().alias("n_interactions"),
+            pl.col("is_positive").cast(int).mean().alias("source_acceptance"),
+            pl.col("dislike").cast(int).mean().alias("source_disacceptance"),
+            (pl.col("timespent") / pl.col("duration")).mean().alias("mean_source_timespent_ratio")
+        )
+        .filter(pl.col("n_interactions") >= min_interactions_threshold)
+        .drop("n_interactions")
+        .collect()
+    )

@@ -15,7 +15,7 @@ import click
 import mlflow
 import pandas as pd
 
-from src.data.item_stats import get_item_stats
+from src.data.item_stats import get_item_stats, get_user2source_stats
 from src.data.user_stats import get_user_stats
 from src.metrics import calc_user_auc
 from src.models.als import ALSModel
@@ -29,7 +29,7 @@ from src.data.preprocessing import (
     prepare_train_for_als_item_like, 
     prepare_train_for_als_item_like_book_share, 
     prepare_train_for_als_timespent,
-    train_test_split_by_user_id
+    train_test_split_by_user_id,
 )
 from src.logger import logger
 
@@ -99,6 +99,7 @@ def join_features(
     sim_features: pl.DataFrame | None,
     users_meta_df: pl.DataFrame | None,
     user_stats: pl.DataFrame,
+    user2source_stats: pl.DataFrame,  # [user_id, source_id, features...]
 ):
     df = (
         target
@@ -106,6 +107,7 @@ def join_features(
         .join(item_stats, how="left", on=["item_id"], suffix="_item")
         .join(items_meta_df.select("item_id", "source_id"), how="left", on="item_id")
         .join(source_stats, how="left", on="source_id", suffix="_source")
+        .join(user2source_stats, on=["user_id", "source_id"], how="left", suffix="_user2source_feature")
         .join(user_stats, how="left", on="user_id")
     )
 
@@ -268,6 +270,8 @@ def train(data_dir: Path, save_datasets: bool):
         train_df_cb_sim_features = get_emb_sim_features(datasets["train_df_cb"], items_meta_df, user_liked_mean_embeddings, user_disliked_mean_embeddings)
         test_df_sim_features = get_emb_sim_features(datasets["train_df_cb"], items_meta_df, user_liked_mean_embeddings, user_disliked_mean_embeddings)
         test_pairs_sim_features = get_emb_sim_features(test_pairs, items_meta_df, user_liked_mean_embeddings, user_disliked_mean_embeddings)
+
+        user2source_stats = get_user2source_stats(datasets["train_df_als"], items_meta_df)
 
         # models
         ## ALS
@@ -699,6 +703,7 @@ def train(data_dir: Path, save_datasets: bool):
             train_df_cb_sim_features,
             users_meta_df=users_meta_df,
             user_stats=user_stats,
+            user2source_stats=user2source_stats,
         ).with_columns(
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
         )
@@ -712,6 +717,7 @@ def train(data_dir: Path, save_datasets: bool):
             test_df_sim_features,
             users_meta_df=users_meta_df,
             user_stats=user_stats,
+            user2source_stats=user2source_stats,
         ).with_columns(
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
         )
@@ -727,6 +733,7 @@ def train(data_dir: Path, save_datasets: bool):
             test_pairs_sim_features,
             users_meta_df=users_meta_df,
             user_stats=user_stats,
+            user2source_stats=user2source_stats,
         )
 
         del item_stats
@@ -789,6 +796,8 @@ def train(data_dir: Path, save_datasets: bool):
             depth=cb_depth, 
             random_seed=32, 
             verbose=50, 
+            # colsample_bylevel=0.8,
+            # subsample=0.8,
             loss_function=cb_loss_function,
             eval_metric="QueryAUC:type=Ranking",
             early_stopping_rounds=50,
