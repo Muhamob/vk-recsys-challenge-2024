@@ -100,6 +100,18 @@ def prepare_train_for_als_timespent(df: pl.DataFrame, items_meta_df: pl.DataFram
     return df_als_timespent_lazy
 
 
+def prepare_train_for_als_item_like_all(df: pl.DataFrame) -> pl.DataFrame:
+    return (
+        df
+        .filter(pl.col("dislike") + pl.col("share") + pl.col("bookmarks") == 0)
+        .select(
+            "user_id", "item_id",
+            pl.col("like").alias("weight"),
+            pl.lit(1).alias("datetime")
+        )
+    )
+
+
 def add_log_weight(df: pl.DataFrame) -> pl.DataFrame:
     return (
         df

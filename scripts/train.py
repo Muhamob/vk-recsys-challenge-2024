@@ -26,7 +26,8 @@ from src.models.ease import EASEModel, EASESourceModel
 from src.data.preprocessing import (
     add_log_weight, 
     load_data, 
-    prepare_train_for_als_item_like, 
+    prepare_train_for_als_item_like,
+    prepare_train_for_als_item_like_all, 
     prepare_train_for_als_item_like_book_share, 
     prepare_train_for_als_timespent,
     train_test_split_by_user_id,
@@ -168,6 +169,7 @@ def join_features(
 
     return (
         df
+        .drop("source_id")
         .sort("user_id", "item_id")
     )
 
@@ -241,6 +243,7 @@ def train(data_dir: Path, save_datasets: bool):
         train_als_like_item = prepare_train_for_als_item_like(datasets["train_df_als"], like_weight=like_weight_item_like)
         train_als_like_book_share_item = prepare_train_for_als_item_like_book_share(datasets["train_df_als"], like_weight=like_weight_item_like)
         train_als_timespent = prepare_train_for_als_timespent(datasets["train_df_als"], items_meta_df=items_meta_df)
+        train_als_like_item_all = prepare_train_for_als_item_like_all(datasets["train_df_als"])
 
         train_als_like_item_time_weighted = add_log_weight(train_als_like_item)
         train_als_like_book_share_item_time_weighted = add_log_weight(train_als_like_book_share_item)
@@ -550,6 +553,16 @@ def train(data_dir: Path, save_datasets: bool):
             ),
         }
 
+        models_like_all = {
+            "lfm_item_like_all": LFMModel(
+                n_features=lfm_n_features, 
+                n_epochs=lfm_n_epochs, 
+                verbose=0,
+                predict_col_name="predict_lfm_item_like_all",
+                cache_dir=lfm_cache_dir,
+            ),
+        }
+
         predicts = {
             "train_df_cb": datasets["train_df_cb"].select("user_id", "item_id"),
             "test_df": datasets["test_df"].select("user_id", "item_id"),
@@ -611,6 +624,35 @@ def train(data_dir: Path, save_datasets: bool):
         
         del train_als_like_book_share_item
         del models_like_book_share
+        gc.collect()
+
+        for model_name, model in models_like_all.items():
+            print(model_name)
+            model.fit(train_als_like_item_all)
+
+            predict_proba_fn = lambda x: model.predict_proba(x)
+
+            predicts["train_df_cb"] = (
+                predicts["train_df_cb"]
+                .join(predict_proba_fn(datasets["train_df_cb"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            predicts["test_df"] = (
+                predicts["test_df"]
+                .join(predict_proba_fn(datasets["test_df"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            predicts["test_pairs"] = (
+                predicts["test_pairs"]
+                .join(predict_proba_fn(test_pairs.select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            del model
+
+        matrix_factorization_columns.extend([model.predict_col_name for _, model in models_like_all.items()])
+        
+        del train_als_like_item_all
+        del models_like_all
         gc.collect()
 
         for model_name, model in models_timespent.items():
