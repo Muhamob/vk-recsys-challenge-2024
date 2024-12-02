@@ -722,7 +722,8 @@ def train(data_dir: Path, save_datasets: bool):
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
         )
 
-        test_df_final, val_df_final = train_test_split_by_user_id(test_df_final, 0.2)
+        # test_df_final, val_df_final = train_test_split_by_user_id(test_df_final, 0.2)
+        val_df_final = None
 
         test_pairs_final = join_features(
             test_pairs,
@@ -778,17 +779,18 @@ def train(data_dir: Path, save_datasets: bool):
 
         train_pool = get_cb_pool(train_df_cb_final, feature_columns)
 
-        val_df_final, _ = add_poly_features(val_df_final, feature_columns_raw)
-        if save_datasets:
-            val_df_final.write_parquet("./data/catboost_dataset_val.parquet")
-        val_df_final = val_df_final.to_pandas()
+        if val_df_final is not None:
+            val_df_final, _ = add_poly_features(val_df_final, feature_columns_raw)
+            if save_datasets:
+                val_df_final.write_parquet("./data/catboost_dataset_val.parquet")
+            val_df_final = val_df_final.to_pandas()
 
-        val_df_final = pd.merge(
-            val_df_final,
-            item_embeddings_df,
-            on="item_id", how="left"
-        )
-        val_pool = get_cb_pool(val_df_final, feature_columns)
+            val_df_final = pd.merge(
+                val_df_final,
+                item_embeddings_df,
+                on="item_id", how="left"
+            )
+            val_pool = get_cb_pool(val_df_final, feature_columns)
 
         logger.info("training catboost model")
         cb_model = CatBoostRanker(
