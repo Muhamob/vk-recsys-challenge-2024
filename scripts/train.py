@@ -275,6 +275,7 @@ def train(data_dir: Path, save_datasets: bool):
         test_pairs_sim_features = get_emb_sim_features(test_pairs, items_meta_df, user_liked_mean_embeddings, user_disliked_mean_embeddings)
 
         user2source_stats = get_user2source_stats(datasets["train_df_als"], items_meta_df)
+        # user2source_stats = pl.DataFrame()
 
         # models
         ## ALS
@@ -892,6 +893,9 @@ def train(data_dir: Path, save_datasets: bool):
             mlflow.log_metric(f"{predict_col}_rocauc", metric_value)
 
         test_pairs_final, _ = add_poly_features(test_pairs_final, feature_columns_raw)
+        if save_datasets:
+            test_pairs_final.write_parquet("./data/catboost_dataset_test_pairs.parquet")
+
         test_pairs_final = test_pairs_final.to_pandas()
         test_pairs_final = pd.merge(
             test_pairs_final,
