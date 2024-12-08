@@ -31,13 +31,13 @@ def get_dict_hash(data: dict[str, Any]) -> str:
     return str(int(hashlib.sha256(dict_as_str.encode('utf-8')).hexdigest(), 16))
 
 
-def polars_output_cache(save_dir):
+def polars_output_cache(save_dir, array_columns=("embeddings", )):
     def wrap(func):
         def wrapped_func(*args):
             hashes = {}
             for i, arg in enumerate(args):
                 if isinstance(arg, pl.DataFrame):
-                    hashes[f"arg_{i}"] = get_polars_hash(arg, check_order=False)
+                    hashes[f"arg_{i}"] = get_polars_hash(arg.drop("embeddings"), check_order=False)
                 elif isinstance(arg, pd.DataFrame):
                     hashes[f"arg_{i}"] = get_pandas_hash(arg, check_order=False)
                 else:
