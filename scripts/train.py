@@ -573,6 +573,7 @@ def train(data_dir: Path, save_datasets: bool):
         for model_name, model in models_like.items():
             print(model_name)
             model.fit(train_als_like_item)
+            model.cold_predict = None
 
             predict_proba_fn = lambda x: model.predict_proba(x) if "ease" not in model_name else model.predict_proba(x, train_als_like_item)
 
@@ -601,6 +602,7 @@ def train(data_dir: Path, save_datasets: bool):
         for model_name, model in models_like_book_share.items():
             print(model_name)
             model.fit(train_als_like_book_share_item)
+            model.cold_predict = None
 
             predict_proba_fn = lambda x: model.predict_proba(x) if "ease" not in model_name else model.predict_proba(x, train_als_like_book_share_item)
 
@@ -630,6 +632,7 @@ def train(data_dir: Path, save_datasets: bool):
         for model_name, model in models_like_all.items():
             print(model_name)
             model.fit(train_als_like_item_all)
+            model.cold_predict = None
 
             predict_proba_fn = lambda x: model.predict_proba(x)
 
@@ -659,6 +662,7 @@ def train(data_dir: Path, save_datasets: bool):
         for model_name, model in models_timespent.items():
             print(model_name)
             model.fit(train_als_timespent)
+            model.cold_predict = None
 
             predicts["train_df_cb"] = (
                 predicts["train_df_cb"]
@@ -686,6 +690,7 @@ def train(data_dir: Path, save_datasets: bool):
         for model_name, model in models_like_book_share_time_weighted.items():
             print(model_name)
             model.fit(train_als_like_book_share_item_time_weighted)
+            model.cold_predict = None
 
             predicts["train_df_cb"] = (
                 predicts["train_df_cb"]
@@ -713,6 +718,7 @@ def train(data_dir: Path, save_datasets: bool):
         for model_name, model in models_like_time_weighted.items():
             print(model_name)
             model.fit(train_als_like_item_time_weighted)
+            model.cold_predict = None
 
             predicts["train_df_cb"] = (
                 predicts["train_df_cb"]

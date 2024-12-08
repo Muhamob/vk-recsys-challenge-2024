@@ -216,9 +216,9 @@ class EASESourceModel(EASEModel):
             .select("user_id", "item_id", "source_id")
             .join(uniq_predict, how="inner", on=["user_id", "source_id"])
             .drop("source_id")
-            .with_columns(
-                pl.col(self.predict_col_name).fill_null(self.cold_predict)
-            )
+            # .with_columns(
+            #     pl.col(self.predict_col_name).fill_null(self.cold_predict)
+            # )
         )
         logger.debug(f"predict shape: {predict.shape}; columns: {predict.columns}")
 
