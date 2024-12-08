@@ -69,7 +69,7 @@ def get_item_stats(
 def get_user2source_stats(
     df: pl.DataFrame, 
     items_meta_df: pl.DataFrame,
-    min_interactions_threshold: int = 10
+    min_interactions_threshold: int = 10,
 ) -> pl.DataFrame:
     logger.debug("Calculate train interactions")
     total_interactions = df.group_by("user_id").len().select("user_id", pl.col("len").alias("n_total_interactions"))
