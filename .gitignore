@@ -3,3 +3,5 @@ __pycache__/
 /data/
 catboost_info
 mlruns
+notebooks/
+.DS_Store
