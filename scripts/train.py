@@ -259,6 +259,7 @@ def train(data_dir: Path, save_datasets: bool):
         source_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="source_id", min_users_for_stats=5, positive_threshold_for_ratio=2)
         user_stats = get_user_stats(datasets["train_df_als"], items_meta_df=items_meta_df, min_items_for_stats=1)
 
+        logger.debug("calculating user_liked_mean_embeddings")
         user_liked_mean_embeddings = (
             datasets["train_df_als"]
             .filter(pl.col("like") + pl.col("share") + pl.col("bookmarks") >= 1)
@@ -268,6 +269,7 @@ def train(data_dir: Path, save_datasets: bool):
             .with_columns(pl.col("embeddings").list.to_array(32))
         )
 
+        logger.debug("calculating user_disliked_mean_embeddings")
         user_disliked_mean_embeddings = (
             datasets["train_df_als"]
             .filter(pl.col("dislike") == 1)

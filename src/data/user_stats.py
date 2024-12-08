@@ -1,5 +1,7 @@
 import polars as pl
 
+from src.logger import logger
+
 
 def get_user_stats(
     df: pl.DataFrame,
@@ -7,12 +9,13 @@ def get_user_stats(
     min_items_for_stats: int = 10,
     max_timespent_ratio: float = 5.0
 ) -> pl.DataFrame:
+    logger.debug("Getting user stats")
     df_result = (
         df
         .join(items_meta_df.select("item_id", "duration"), how="left", on="item_id")
         .with_columns(
             (pl.col("timespent") / pl.col("duration")).clip(0, max_timespent_ratio).alias("timespent_ratio"),
-            pl.col("rn").sort().cum_count(reverse=True).over("user_id").alias("rn_new")
+            pl.col("rn").cum_count(reverse=True).over("user_id").alias("rn_new")
         )
         .group_by("user_id")
         .agg(
