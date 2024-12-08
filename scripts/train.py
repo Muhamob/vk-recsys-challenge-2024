@@ -214,8 +214,13 @@ def train(data_dir: Path, save_datasets: bool):
             pl.col("item_id").cast(pl.UInt32),
             pl.col("user_id").cast(pl.UInt32)
         )
-        items_meta_df = pl.read_parquet(data_dir / "raw/items_meta.parquet")
-        users_meta_df = pl.read_parquet(data_dir / "raw/users_meta.parquet")
+        items_meta_df = pl.read_parquet(data_dir / "raw/items_meta.parquet").cast({
+            "duration": pl.Float32()
+        })
+        users_meta_df = pl.read_parquet(data_dir / "raw/users_meta.parquet").cast({
+            "gender": pl.Float32(),
+            "age": pl.Float32(),
+        })
 
         # filter users with no target
         for ds in ["train_df_cb", "test_df"]:
