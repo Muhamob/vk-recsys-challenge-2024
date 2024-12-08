@@ -10,7 +10,10 @@ def get_user_stats(
     df_result = (
         df
         .join(items_meta_df.select("item_id", "duration"), how="left", on="item_id")
-        .with_columns((pl.col("timespent") / pl.col("duration")).clip(0, max_timespent_ratio).alias("timespent_ratio"))
+        .with_columns(
+            (pl.col("timespent") / pl.col("duration")).clip(0, max_timespent_ratio).alias("timespent_ratio"),
+            pl.col("rn").sort().cum_count(reverse=True).over("user_id").alias("rn_new")
+        )
         .group_by("user_id")
         .agg(
             pl.col("like").sum().alias("total_likes"),
