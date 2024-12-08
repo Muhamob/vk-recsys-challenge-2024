@@ -35,7 +35,7 @@ def get_user_stats(
     )
 
     feature_columns = [c for c in df_result.columns if c != "user_id"]
-    return df.select(
+    return df_result.select(
         "user_id",
         *[pl.col(col).alias(f"user_{col}") for col in feature_columns]
     )
