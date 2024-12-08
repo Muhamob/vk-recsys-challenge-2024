@@ -37,7 +37,10 @@ def polars_output_cache(save_dir, array_columns=("embeddings", )):
             hashes = {}
             for i, arg in enumerate(args):
                 if isinstance(arg, pl.DataFrame):
-                    hashes[f"arg_{i}"] = get_polars_hash(arg.drop("embeddings"), check_order=False)
+                    if "embeddings" in arg.columns:
+                        hashes[f"arg_{i}"] = get_polars_hash(arg.drop("embeddings"), check_order=False)
+                    else:
+                        hashes[f"arg_{i}"] = get_polars_hash(arg, check_order=False)
                 elif isinstance(arg, pd.DataFrame):
                     hashes[f"arg_{i}"] = get_pandas_hash(arg, check_order=False)
                 else:
