@@ -15,6 +15,7 @@ import click
 import mlflow
 import pandas as pd
 
+from src.cache import polars_output_cache
 from src.data.item_stats import get_item_stats, get_user2source_stats
 from src.data.user_stats import get_user_stats
 from src.metrics import calc_user_auc
@@ -254,9 +255,9 @@ def train(data_dir: Path, save_datasets: bool):
         train_als_like_item_time_weighted = add_log_weight(train_als_like_item)
         train_als_like_book_share_item_time_weighted = add_log_weight(train_als_like_book_share_item)
 
-        item_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="item_id")
-        source_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="source_id")
-        user_stats = get_user_stats(datasets["train_df_als"], items_meta_df=items_meta_df)
+        item_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="item_id", positive_threshold_for_ratio=2, min_users_for_stats=5)
+        source_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="source_id", min_users_for_stats=5, positive_threshold_for_ratio=2)
+        user_stats = get_user_stats(datasets["train_df_als"], items_meta_df=items_meta_df, min_items_for_stats=1)
 
         user_liked_mean_embeddings = (
             datasets["train_df_als"]
@@ -280,8 +281,8 @@ def train(data_dir: Path, save_datasets: bool):
         test_df_sim_features = get_emb_sim_features(datasets["train_df_cb"], items_meta_df, user_liked_mean_embeddings, user_disliked_mean_embeddings)
         test_pairs_sim_features = get_emb_sim_features(test_pairs, items_meta_df, user_liked_mean_embeddings, user_disliked_mean_embeddings)
 
-        user2source_stats = get_user2source_stats(datasets["train_df_als"], items_meta_df)
-        # user2source_stats = pl.DataFrame()
+        get_user2source_stats_cached = polars_output_cache(data_dir / "cache/models/user2source_stats/")(get_user2source_stats)
+        user2source_stats = get_user2source_stats_cached(datasets["train_df_als"], items_meta_df)
 
         # models
         ## ALS
