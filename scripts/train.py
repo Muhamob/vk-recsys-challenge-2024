@@ -807,16 +807,16 @@ def train(data_dir: Path, save_datasets: bool):
         feature_columns_raw = [c for c in test_pairs_final.columns if c not in ("user_id", "item_id")]
 
         delete_columns = [
-            "sum_like",
-            "sum_dislike",
-            "sum_share",
-            "sum_bookmarks",
-            "sum_positive",
-            "sum_like_source",
-            "sum_dislike_source",
-            "sum_share_source",
-            "sum_bookmarks_source",
-            "sum_positive_source",
+            # "sum_like",
+            # "sum_dislike",
+            # "sum_share",
+            # "sum_bookmarks",
+            # "sum_positive",
+            # "sum_like_source",
+            # "sum_dislike_source",
+            # "sum_share_source",
+            # "sum_bookmarks_source",
+            # "sum_positive_source",
         ]
 
         feature_columns_raw = [c for c in feature_columns_raw if c not in delete_columns]

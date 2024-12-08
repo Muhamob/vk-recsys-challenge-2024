@@ -7,21 +7,7 @@ def get_user_stats(
     min_items_for_stats: int = 10,
     max_timespent_ratio: float = 5.0
 ) -> pl.DataFrame:
-    feature_columns = (
-        "avg_timespent", 
-        "avg_timespent_like", 
-        "avg_timespent_dislike", 
-        "avg_timespent_ratio", 
-        "avg_timespent_ratio_like", 
-        "avg_timespent_ratio_dislike", 
-        # "total_interactions", 
-        "like_perc", 
-        "dislike_perc", 
-        "share_perc", 
-        "bookmarks_perc",
-    )
-
-    return (
+    df_result = (
         df
         .join(items_meta_df.select("item_id", "duration"), how="left", on="item_id")
         .with_columns((pl.col("timespent") / pl.col("duration")).clip(0, max_timespent_ratio).alias("timespent_ratio"))
@@ -46,8 +32,10 @@ def get_user_stats(
             (pl.col("total_share") / pl.col("total_interactions")).alias("share_perc"),
             (pl.col("total_bookmarks") / pl.col("total_interactions")).alias("bookmarks_perc"),
         )
-        .select(
-            "user_id",
-            *[pl.col(col).alias(f"user_{col}") for col in feature_columns]
-        )
+    )
+
+    feature_columns = [c for c in df_result.columns if c != "user_id"]
+    return df.select(
+        "user_id",
+        *[pl.col(col).alias(f"user_{col}") for col in feature_columns]
     )

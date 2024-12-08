@@ -54,7 +54,7 @@ def get_item_stats(
             pl.col("like_dislike_ratio").fill_null(ratio_default_value)
         )
         .drop(
-            "n_users",
+            # "n_users",
             # "sum_like",
             # "sum_dislike",
             # "sum_share",
