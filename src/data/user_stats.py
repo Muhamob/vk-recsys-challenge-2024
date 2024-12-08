@@ -46,14 +46,6 @@ def get_user_stats(
             pl.col("bookmarks").filter(pl.col("rn_new") <= 10).sum().alias("n_bookmarks_last_10"),
             pl.col("bookmarks").filter(pl.col("rn_new") <= 20).sum().alias("n_bookmarks_last_20"),
             pl.col("bookmarks").filter(pl.col("rn_new") <= 100).sum().alias("n_bookmarks_last_100"),
-            # timespent
-            pl.col("timespent").filter(pl.col("rn_new") <= 10).mean().alias("avg_timespent_last_10"),
-            pl.col("timespent").filter(pl.col("rn_new") <= 20).mean().alias("avg_timespent_last_20"),
-            pl.col("timespent").filter(pl.col("rn_new") <= 100).mean().alias("avg_timespent_last_100"),
-            # timespent ratio
-            pl.col("timespent_ratio").filter(pl.col("rn_new") <= 10).mean().alias("avg_timespent_ratio_last_10"),
-            pl.col("timespent_ratio").filter(pl.col("rn_new") <= 20).mean().alias("avg_timespent_ratio_last_20"),
-            pl.col("timespent_ratio").filter(pl.col("rn_new") <= 100).mean().alias("avg_timespent_ratio_last_100"),
         )
         .filter(pl.col("total_interactions") >= min_items_for_stats)
         .with_columns(
