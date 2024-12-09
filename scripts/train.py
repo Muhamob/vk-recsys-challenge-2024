@@ -752,6 +752,13 @@ def train(data_dir: Path, save_datasets: bool):
         del models_like_time_weighted
         gc.collect()
 
+        target_expression = (
+            pl.col("like").cast(int) 
+            + pl.col("share").cast(int) 
+            + pl.col("bookmarks").cast(int)
+            - pl.col("dislike").cast(int)
+        )
+
         train_df_cb_final = join_features(
             datasets["train_df_cb"],
             predicts["train_df_cb"],
@@ -762,9 +769,7 @@ def train(data_dir: Path, save_datasets: bool):
             users_meta_df=users_meta_df,
             user_stats=user_stats,
             user2source_stats=user2source_stats,
-        ).with_columns(
-            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
-        )
+        ).with_columns(target=target_expression)
 
         test_df_final = join_features(
             datasets["test_df"],
@@ -776,9 +781,7 @@ def train(data_dir: Path, save_datasets: bool):
             users_meta_df=users_meta_df,
             user_stats=user_stats,
             user2source_stats=user2source_stats,
-        ).with_columns(
-            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
-        )
+        ).with_columns(target=target_expression)
 
         # test_df_final, val_df_final = train_test_split_by_user_id(test_df_final, 0.2)
         val_df_final = None
