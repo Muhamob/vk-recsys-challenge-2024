@@ -764,9 +764,6 @@ def train(data_dir: Path, save_datasets: bool):
             user2source_stats=user2source_stats,
         ).with_columns(
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
-        ).join(
-            pl.read_parquet(data_dir / "processed2/lag_target.parquet"), 
-            on=["user_id", "item_id"], how="left"
         )
 
         test_df_final = join_features(
@@ -781,9 +778,6 @@ def train(data_dir: Path, save_datasets: bool):
             user2source_stats=user2source_stats,
         ).with_columns(
             (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
-        ).join(
-            pl.read_parquet(data_dir / "processed2/lag_target_test.parquet"), 
-            on="user_id", how="left"
         )
 
         # test_df_final, val_df_final = train_test_split_by_user_id(test_df_final, 0.2)
@@ -799,9 +793,6 @@ def train(data_dir: Path, save_datasets: bool):
             users_meta_df=users_meta_df,
             user_stats=user_stats,
             user2source_stats=user2source_stats,
-        ).join(
-            pl.read_parquet(data_dir / "processed2/lag_target_test_pairs.parquet"), 
-            on="user_id", how="left"
         )
 
         del item_stats
