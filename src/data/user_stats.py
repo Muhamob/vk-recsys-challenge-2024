@@ -31,21 +31,21 @@ def get_user_stats(
             pl.col("timespent_ratio").filter(pl.col("dislike") == 1).mean().alias("avg_timespent_ratio_dislike"),
             pl.count().alias("total_interactions"),
             # like
-            pl.col("like").filter(pl.col("rn_new") <= 10).sum().alias("n_likes_last_10"),
-            pl.col("like").filter(pl.col("rn_new") <= 20).sum().alias("n_likes_last_20"),
-            pl.col("like").filter(pl.col("rn_new") <= 100).sum().alias("n_likes_last_100"),
-            # dislike
-            pl.col("dislike").filter(pl.col("rn_new") <= 10).sum().alias("n_dislikes_last_10"),
-            pl.col("dislike").filter(pl.col("rn_new") <= 20).sum().alias("n_dislikes_last_20"),
-            pl.col("dislike").filter(pl.col("rn_new") <= 100).sum().alias("n_dislikes_last_100"),
-            # share
-            pl.col("share").filter(pl.col("rn_new") <= 10).sum().alias("n_shares_last_10"),
-            pl.col("share").filter(pl.col("rn_new") <= 20).sum().alias("n_shares_last_20"),
-            pl.col("share").filter(pl.col("rn_new") <= 100).sum().alias("n_shares_last_100"),
-            # bookmarks
-            pl.col("bookmarks").filter(pl.col("rn_new") <= 10).sum().alias("n_bookmarks_last_10"),
-            pl.col("bookmarks").filter(pl.col("rn_new") <= 20).sum().alias("n_bookmarks_last_20"),
-            pl.col("bookmarks").filter(pl.col("rn_new") <= 100).sum().alias("n_bookmarks_last_100"),
+            # pl.col("like").filter(pl.col("rn_new") <= 10).sum().alias("n_likes_last_10"),
+            # pl.col("like").filter(pl.col("rn_new") <= 20).sum().alias("n_likes_last_20"),
+            # pl.col("like").filter(pl.col("rn_new") <= 100).sum().alias("n_likes_last_100"),
+            # # dislike
+            # pl.col("dislike").filter(pl.col("rn_new") <= 10).sum().alias("n_dislikes_last_10"),
+            # pl.col("dislike").filter(pl.col("rn_new") <= 20).sum().alias("n_dislikes_last_20"),
+            # pl.col("dislike").filter(pl.col("rn_new") <= 100).sum().alias("n_dislikes_last_100"),
+            # # share
+            # pl.col("share").filter(pl.col("rn_new") <= 10).sum().alias("n_shares_last_10"),
+            # pl.col("share").filter(pl.col("rn_new") <= 20).sum().alias("n_shares_last_20"),
+            # pl.col("share").filter(pl.col("rn_new") <= 100).sum().alias("n_shares_last_100"),
+            # # bookmarks
+            # pl.col("bookmarks").filter(pl.col("rn_new") <= 10).sum().alias("n_bookmarks_last_10"),
+            # pl.col("bookmarks").filter(pl.col("rn_new") <= 20).sum().alias("n_bookmarks_last_20"),
+            # pl.col("bookmarks").filter(pl.col("rn_new") <= 100).sum().alias("n_bookmarks_last_100"),
         )
         .filter(pl.col("total_interactions") >= min_items_for_stats)
         .with_columns(
