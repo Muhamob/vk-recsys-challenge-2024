@@ -15,7 +15,7 @@ def get_item_stats(
 ) -> pl.DataFrame:
     item_features_extra = (
         train_df
-        .drop(["rn", "max_rn"])
+        .drop("rn")
         .join(items_meta_df.select("item_id", "source_id", "duration"), how="left", on="item_id")
         .join(users_meta_df, how="left", on="user_id")
         .with_columns(
