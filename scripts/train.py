@@ -209,8 +209,9 @@ def train(data_dir: Path, save_datasets: bool):
 
     with mlflow.start_run():
         data_dir = Path(data_dir)
+        datasets_dir = data_dir / "processed3"
 
-        datasets = load_data(data_dir / "processed")
+        datasets = load_data(datasets_dir)
         test_pairs = pl.read_csv(data_dir / "raw/test_pairs.csv.csv").with_columns(
             pl.col("item_id").cast(pl.UInt32),
             pl.col("user_id").cast(pl.UInt32)
@@ -327,6 +328,7 @@ def train(data_dir: Path, save_datasets: bool):
             "ease_max_source_ids": ease_max_source_ids,
 
             "like_weight_item_like": like_weight_item_like,
+            "datasets_dir": datasets_dir.as_posix(),
         })
 
         models_like = {
