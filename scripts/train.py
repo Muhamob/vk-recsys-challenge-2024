@@ -519,6 +519,8 @@ def train(data_dir: Path, save_datasets: bool):
             ),
         }
 
+        models_like_book_share = {}
+
         models_like_book_share_time_weighted = {
             "als_item_like_book_share_time_weighted": ALSModel(
                 iterations=iterations,
@@ -544,6 +546,8 @@ def train(data_dir: Path, save_datasets: bool):
                 cache_dir=lfm_cache_dir,
             ),
         }
+
+        models_like_book_share_time_weighted = {}
 
         models_timespent = {
             "als_item_timespent": ALSModel(
@@ -752,6 +756,8 @@ def train(data_dir: Path, save_datasets: bool):
         del models_like_time_weighted
         gc.collect()
 
+        target_expr = (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
+
         train_df_cb_final = join_features(
             datasets["train_df_cb"],
             predicts["train_df_cb"],
@@ -762,9 +768,7 @@ def train(data_dir: Path, save_datasets: bool):
             users_meta_df=users_meta_df,
             user_stats=user_stats,
             user2source_stats=user2source_stats,
-        ).with_columns(
-            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
-        )
+        ).with_columns(target_expr)
 
         test_df_final = join_features(
             datasets["test_df"],
@@ -776,9 +780,7 @@ def train(data_dir: Path, save_datasets: bool):
             users_meta_df=users_meta_df,
             user_stats=user_stats,
             user2source_stats=user2source_stats,
-        ).with_columns(
-            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
-        )
+        ).with_columns(target_expr)
 
         # test_df_final, val_df_final = train_test_split_by_user_id(test_df_final, 0.2)
         val_df_final = None
