@@ -18,7 +18,10 @@ def split_data(
     data_dir = Path(data_dir)
     save_dir = Path(save_dir)
     
-    interactions_df = pl.read_parquet(data_dir / "train_interactions.parquet")
+    interactions_df = (
+        pl.read_parquet(data_dir / "train_interactions.parquet")
+        .with_columns(pl.first().cum_count(reverse=True).alias("row_number").over("user_id").alias("rn"))
+    )
 
     test_df = (
         interactions_df
@@ -27,9 +30,7 @@ def split_data(
         .filter(pl.col("n_items") > test_n_items)
         .drop("n_items")
         .join(interactions_df, how="left", on="user_id")
-        .with_columns(pl.first().cum_count(reverse=True).alias("row_number").over("user_id").alias("rn"))
         .filter(pl.col("rn") <= test_n_items)
-        .drop("rn")
     )
 
     train_df = (
@@ -41,12 +42,13 @@ def split_data(
         train_df
         .lazy()
         .with_columns(
-            pl.first().cum_count(reverse=True).over("user_id").alias("rn"),
-            pl.first().count().over("user_id").alias("max_rn"),
+            pl.first().cum_count(reverse=True).over("user_id").alias("rn_new"),
+            pl.first().count().over("user_id").alias("max_rn_new"),
         )
         .with_columns(
-            (pl.col("rn") / pl.col("max_rn")).alias("rn_ratio")
+            (pl.col("rn_new") / pl.col("max_rn_new")).alias("rn_ratio")
         )
+        .drop("rn_new", "max_rn_new")
     )
 
     train_df_cb = (
