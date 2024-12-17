@@ -209,7 +209,7 @@ def train(data_dir: Path, save_datasets: bool):
 
     with mlflow.start_run():
         data_dir = Path(data_dir)
-        datasets_dir = data_dir / "processed3"
+        datasets_dir = data_dir / "processed"
 
         datasets = load_data(datasets_dir)
         test_pairs = pl.read_csv(data_dir / "raw/test_pairs.csv.csv").with_columns(
@@ -836,7 +836,8 @@ def train(data_dir: Path, save_datasets: bool):
         cb_iterations = 1000
         cb_depth = 6
 
-        cb_loss_function = "YetiRank"
+        # cb_loss_function = "YetiRank"
+        cb_loss_function = "QueryCrossEntropy"
         mlflow.log_params({
             "cb_iterations": cb_iterations,
             "cb_depth": cb_depth,
