@@ -14,14 +14,14 @@ def load_data(data_dir: Path = Path("../data/processed/")) -> dict[str, pl.DataF
         train_df_cb=pl.read_parquet(data_dir / "train_df_cb.parquet"),
         test_df=pl.read_parquet(data_dir / "test_df.parquet"),
     )
-    # data["train_df_cb"] = pl.concat([
-    #     data["train_df_cb"],
-    #     data["test_df"]
-    #     # .with_columns(
-    #     #     pl.lit(1).alias("rn").cast(pl.UInt32()),
-    #     #     pl.lit(1).alias("max_rn").cast(pl.UInt32()),
-    #     # )
-    # ])
+    data["train_df_cb"] = pl.concat([
+        data["train_df_cb"],
+        data["test_df"]
+        # .with_columns(
+        #     pl.lit(1).alias("rn").cast(pl.UInt32()),
+        #     pl.lit(1).alias("max_rn").cast(pl.UInt32()),
+        # )
+    ])
     logger.debug("Done loading data")
 
     return data
