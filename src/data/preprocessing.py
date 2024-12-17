@@ -17,10 +17,10 @@ def load_data(data_dir: Path = Path("../data/processed/")) -> dict[str, pl.DataF
     data["train_df_cb"] = pl.concat([
         data["train_df_cb"],
         data["test_df"]
-        # .with_columns(
-        #     pl.lit(1).alias("rn").cast(pl.UInt32()),
-        #     pl.lit(1).alias("max_rn").cast(pl.UInt32()),
-        # )
+        .with_columns(
+            pl.lit(1).alias("rn").cast(pl.UInt32()),
+            pl.lit(1).alias("max_rn").cast(pl.UInt32()),
+        )
     ])
     logger.debug("Done loading data")
 
