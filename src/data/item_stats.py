@@ -66,6 +66,27 @@ def get_item_stats(
     return item_features_extra
 
 
+def get_source_stats(
+    df: pl.DataFrame,
+    items_meta_df: pl.DataFrame,
+):
+    logger.debug("Calculate source stats")
+    source_stats_df = (
+        items_meta_df
+        .group_by("source_id")
+        .agg(
+            pl.col("duration").mean().alias("duration_mean"),
+            pl.col("duration").quantile(0.2).alias("duration_q20"),
+            pl.col("duration").quantile(0.5).alias("duration_q50"),
+            pl.col("duration").quantile(0.8).alias("duration_q80"),
+            pl.first().count().alias("n_items"),
+        )
+    )
+    logger.debug("Done calculate source stats")
+
+    return source_stats_df
+
+
 def get_user2source_stats(
     df: pl.DataFrame, 
     items_meta_df: pl.DataFrame,
