@@ -1,6 +1,5 @@
 from datetime import datetime
 import gc
-from itertools import product
 import os
 from pathlib import Path
 from typing import Sequence
@@ -8,9 +7,8 @@ import threadpoolctl
 import logging
 
 import polars as pl
-import numpy as np
 from tqdm import tqdm
-from catboost import CatBoostClassifier, CatBoostRanker, Pool
+from catboost import CatBoostRanker, Pool
 import click
 import mlflow
 import pandas as pd
@@ -22,6 +20,7 @@ from src.metrics import calc_user_auc
 from src.models.als import ALSModel
 from src.models.als_source import ALSSource
 from src.models.lightfm import LFMModel
+from src.models.w2v_model import W2VModel
 from src.models.lightfm_source import LightFMSource, LightFMSourceAdd
 from src.models.ease import EASEModel, EASESourceModel
 from src.data.preprocessing import (
@@ -31,7 +30,6 @@ from src.data.preprocessing import (
     prepare_train_for_als_item_like_all, 
     prepare_train_for_als_item_like_book_share, 
     prepare_train_for_als_timespent,
-    train_test_split_by_user_id,
 )
 from src.logger import logger
 
@@ -308,9 +306,14 @@ def train(data_dir: Path, save_datasets: bool):
         ease_max_source_ids = 5000
         ease_regularization = 2000.0
 
+        # w2v
+        w2v_n_features = 128
+        w2v_n_epochs = 10
+
         als_cache_dir = data_dir / "cache/models/als"
         lfm_cache_dir = data_dir / "cache/models/lightfm"
         ease_cache_dir = data_dir / "cache/models/ease"
+        w2v_cache_dir = data_dir / "cache/models/w2v"
 
         del datasets["train_df_als"]
         del user_disliked_mean_embeddings
@@ -330,9 +333,27 @@ def train(data_dir: Path, save_datasets: bool):
             "ease_regularization": ease_regularization,
             "ease_max_source_ids": ease_max_source_ids,
 
+            "w2v_n_features": w2v_n_features,
+            "w2v_n_epochs": w2v_n_epochs,
+
             "like_weight_item_like": like_weight_item_like,
             "datasets_dir": datasets_dir.as_posix(),
         })
+
+        models_w2v = {
+            "like": W2VModel(
+                n_features=w2v_n_features, 
+                n_epochs=w2v_n_epochs, 
+                predict_col_name="w2v_predict_like", 
+                cache_dir=w2v_cache_dir
+            ),
+            "timespent": W2VModel(
+                n_features=w2v_n_features, 
+                n_epochs=w2v_n_epochs, 
+                predict_col_name="w2v_predict_timespent", 
+                cache_dir=w2v_cache_dir
+            ),
+        }
 
         models_like = {
             "als_item_like": ALSModel(
@@ -613,8 +634,35 @@ def train(data_dir: Path, save_datasets: bool):
             del model
         
         matrix_factorization_columns = [model.predict_col_name for _, model in models_like.items()]
+
+        model_w2v = models_w2v["like"]
+        model_w2v.fit(train_als_like_item)
+        predicts["train_df_cb"] = (
+            predicts["train_df_cb"]
+            .join(model_w2v.predict_proba(
+                datasets["train_df_cb"].select("user_id", "item_id"), 
+                train_als_like_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_df"] = (
+            predicts["test_df"]
+            .join(model_w2v.predict_proba(
+                datasets["test_df"].select("user_id", "item_id"), 
+                train_als_like_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_pairs"] = (
+            predicts["test_pairs"]
+            .join(model_w2v.predict_proba(
+                test_pairs.select("user_id", "item_id"), 
+                train_als_like_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        matrix_factorization_columns.append(model_w2v.predict_col_name)
+
         del train_als_like_item
         del models_like
+        del models_w2v["like"]
         gc.collect()
 
         for model_name, model in models_like_book_share.items():
@@ -701,8 +749,34 @@ def train(data_dir: Path, save_datasets: bool):
 
         matrix_factorization_columns.extend([model.predict_col_name for _, model in models_timespent.items()])
 
+        model_w2v = models_w2v["timespent"]
+        model_w2v.fit(train_als_timespent)
+        predicts["train_df_cb"] = (
+            predicts["train_df_cb"]
+            .join(model_w2v.predict_proba(
+                datasets["train_df_cb"].select("user_id", "item_id"), 
+                train_als_timespent
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_df"] = (
+            predicts["test_df"]
+            .join(model_w2v.predict_proba(
+                datasets["test_df"].select("user_id", "item_id"), 
+                train_als_timespent
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_pairs"] = (
+            predicts["test_pairs"]
+            .join(model_w2v.predict_proba(
+                test_pairs.select("user_id", "item_id"), 
+                train_als_timespent
+            ), how="left", on=["user_id", "item_id"])
+        )
+        matrix_factorization_columns.append(model_w2v.predict_col_name)
+
         del train_als_timespent
         del models_timespent
+        del models_w2v["timespent"]
         gc.collect()
 
         for model_name, model in models_like_book_share_time_weighted.items():
