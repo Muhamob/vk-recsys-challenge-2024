@@ -836,7 +836,7 @@ def train(data_dir: Path, save_datasets: bool):
             train_df_cb_final.write_parquet("./data/catboost_dataset_train.parquet")
         train_df_cb_final = train_df_cb_final.to_pandas()
 
-        cb_iterations = 10000
+        cb_iterations = 5000
         cb_depth = 6
         cb_loss_function = "YetiRank"
         # cb_loss_function = "QueryCrossEntropy"
@@ -845,6 +845,9 @@ def train(data_dir: Path, save_datasets: bool):
             "cb_iterations": cb_iterations,
             "cb_depth": cb_depth,
             "cb_loss_function": cb_loss_function,
+            "feature_columns_raw": feature_columns_raw,
+            "feature_columns": feature_columns,
+            "len_feature_columns": len(feature_columns),
         })
 
         item_embeddings_df = items_meta_df[["item_id", "embeddings"]].to_pandas()
@@ -949,12 +952,6 @@ def train(data_dir: Path, save_datasets: bool):
         test_pairs_final[["user_id", "item_id", "predict"]].to_csv(submission_path, index=False)
 
         mlflow.log_param("submission_path", submission_path)
-
-        mlflow.log_params({
-            "feature_columns_raw": feature_columns_raw,
-            "feature_columns": feature_columns,
-            "len_feature_columns": len(feature_columns),
-        })
 
 
 if __name__ == "__main__":
