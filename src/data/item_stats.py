@@ -83,7 +83,7 @@ def get_source_stats(
                 for i in range(1, 10)
             ],
             pl.first().count().alias("n_items"),
-        ),
+        )
     )
     logger.debug("Done calculate source stats")
 
