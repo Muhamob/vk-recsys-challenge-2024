@@ -166,8 +166,8 @@ def join_features(
             pl.col("user2item_like_perc").mul("gender_distr").alias("user2item_like_perc_gender")
         )
         .with_columns(
-            (pl.col("user_source_id_mode") == pl.col("source_id")).alias("is_user_source_id_mode"),
-            (pl.col("user_liked_source_id_mode") == pl.col("source_id")).alias("is_liked_source_id_mode"),
+            pl.col("source_id").is_in("user_source_id_mode").alias("is_user_source_id_mode"),
+            pl.col("source_id").is_in("user_liked_source_id_mode").alias("is_liked_source_id_mode"),
         )
     )
 
