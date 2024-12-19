@@ -12,6 +12,7 @@ from catboost import CatBoostRanker, Pool
 import click
 import mlflow
 import pandas as pd
+from models.blending import CBMeanRanker
 
 from src.cache import polars_output_cache
 from src.data.item_stats import get_item_stats, get_source_stats, get_user2source_stats
@@ -952,17 +953,28 @@ def train(data_dir: Path, save_datasets: bool):
             val_pool = get_cb_pool(val_df_final, feature_columns)
 
         logger.info("training catboost model")
-        cb_model = CatBoostRanker(
-            iterations=cb_iterations, 
-            depth=cb_depth, 
-            random_seed=32, 
-            verbose=50, 
-            # colsample_bylevel=0.8,
-            # subsample=0.8,
-            loss_function=cb_loss_function,
-            eval_metric="QueryAUC:type=Ranking",
-            early_stopping_rounds=50,
-        )
+        cb_model = CBMeanRanker([
+            CatBoostRanker(
+                iterations=cb_iterations, 
+                depth=cb_depth, 
+                random_seed=random_state, 
+                verbose=50, 
+                # colsample_bylevel=0.8,
+                # subsample=0.8,
+                loss_function=cb_loss_function,
+            ) for random_state in (32, 542, 412)
+        ])
+        # cb_model = CatBoostRanker(
+        #     iterations=cb_iterations, 
+        #     depth=cb_depth, 
+        #     random_seed=32, 
+        #     verbose=50, 
+        #     # colsample_bylevel=0.8,
+        #     # subsample=0.8,
+        #     loss_function=cb_loss_function,
+        #     eval_metric="QueryAUC:type=Ranking",
+        #     early_stopping_rounds=50,
+        # )
         cb_model.fit(train_pool, eval_set=val_pool)
 
         del train_df_cb_final

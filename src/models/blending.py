@@ -1,6 +1,6 @@
 import pandas as pd
-import polars as pl
-from catboost import CatBoostClassifier, CatBoostRanker
+import numpy as np
+from catboost import CatBoostClassifier, CatBoostRanker, Pool
 from sklearn.model_selection import train_test_split
 
 from src.logger import logger
@@ -97,3 +97,23 @@ class CBBlendingRanker:
             return predict, prediction 
 
         return predict
+    
+
+class CBMeanRanker:
+    def __init__(
+        self, 
+        models: list, 
+        weights: list | None = None
+    ):
+        self.models = models
+        self.weights = [1, ] * len(self.models) if weights is None else weights
+        assert len(self.weights) == len(self.models)
+
+    def fit(self, train_pool: Pool, eval_set: Pool | None = None):
+        for model in self.models:
+            model.fit(train_pool, eval_set=eval_set)
+        
+        return self
+    
+    def predict(self, test_pool: Pool):
+        return np.stack([w * model.predict(test_pool) for w, model in zip(self.weights, self.models)]).mean(axis=0)
