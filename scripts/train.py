@@ -12,7 +12,6 @@ from catboost import CatBoostRanker, Pool
 import click
 import mlflow
 import pandas as pd
-from models.blending import CBMeanRanker
 
 from src.cache import polars_output_cache
 from src.data.item_stats import get_item_stats, get_source_stats, get_user2source_stats
@@ -24,6 +23,7 @@ from src.models.lightfm import LFMModel
 from src.models.w2v_model import W2VModel
 from src.models.lightfm_source import LightFMSource, LightFMSourceAdd
 from src.models.ease import EASEModel, EASESourceModel
+from src.models.blending import CBMeanRanker
 from src.data.preprocessing import (
     add_log_weight, 
     load_data, 
