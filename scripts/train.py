@@ -174,7 +174,7 @@ def join_features(
 
     return (
         df
-        .drop("source_id")
+        .drop("source_id", "user_source_id_mode", "user_liked_source_id_mode", "user_liked_source_id_mode")
         .sort("user_id", "item_id")
     )
 
