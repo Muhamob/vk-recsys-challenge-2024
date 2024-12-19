@@ -962,19 +962,8 @@ def train(data_dir: Path, save_datasets: bool):
                 # colsample_bylevel=0.8,
                 # subsample=0.8,
                 loss_function=cb_loss_function,
-            ) for random_state in (32, 542, 412)
+            ) for random_state in (32, )
         ])
-        # cb_model = CatBoostRanker(
-        #     iterations=cb_iterations, 
-        #     depth=cb_depth, 
-        #     random_seed=32, 
-        #     verbose=50, 
-        #     # colsample_bylevel=0.8,
-        #     # subsample=0.8,
-        #     loss_function=cb_loss_function,
-        #     eval_metric="QueryAUC:type=Ranking",
-        #     early_stopping_rounds=50,
-        # )
         cb_model.fit(train_pool, eval_set=val_pool)
 
         del train_df_cb_final
