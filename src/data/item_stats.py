@@ -34,6 +34,8 @@ def get_item_stats(
             pl.col("bookmarks").mean().alias("mean_bookmarks"),
             pl.col("bookmarks").sum().alias("sum_bookmarks"),
             pl.col("timespent_ratio").mean().alias("mean_timespent_ratio"),
+            pl.col("timespent_ratio").filter(pl.col("positive_feedback") >= 1).mean().alias("mean_timespent_ratio_positive"),
+            pl.col("timespent_ratio").filter(pl.col("dislike") >= 1).mean().alias("mean_timespent_ratio_negative"),
             pl.col("gender").mean().alias("mean_gender"),
             pl.col("gender").filter(pl.col("positive_feedback") >= 1).mean().alias("mean_gender_positive"),
             pl.col("gender").filter(pl.col("dislike") >= 1).mean().alias("mean_gender_negative"),
@@ -76,11 +78,12 @@ def get_source_stats(
         .group_by("source_id")
         .agg(
             pl.col("duration").mean().alias("duration_mean"),
-            pl.col("duration").quantile(0.2).alias("duration_q20"),
-            pl.col("duration").quantile(0.5).alias("duration_q50"),
-            pl.col("duration").quantile(0.8).alias("duration_q80"),
+            *[
+                pl.col("duration").quantile(i / 10.0).alias(f"duration_q{i * 10}")
+                for i in range(1, 10)
+            ],
             pl.first().count().alias("n_items"),
-        )
+        ),
     )
     logger.debug("Done calculate source stats")
 
