@@ -27,7 +27,7 @@ def get_user_stats(
             pl.col("bookmarks").sum().alias("total_bookmarks"),
             pl.col("timespent").sum().alias("total_timespent"),
             pl.col("timespent").mean().alias("avg_timespent"),
-            [
+            *[
                 pl.col("timespent").quantile(i / 10.0).alias(f"timespent_q{i * 10}")
                 for i in range(1, 10, 2)
             ],

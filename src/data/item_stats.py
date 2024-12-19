@@ -34,7 +34,7 @@ def get_item_stats(
             pl.col("bookmarks").mean().alias("mean_bookmarks"),
             pl.col("bookmarks").sum().alias("sum_bookmarks"),
             pl.col("timespent_ratio").mean().alias("mean_timespent_ratio"),
-            [
+            *[
                 pl.col("timespent_ratio").quantile(i / 10.0).alias(f"timespent_ratio_q{i * 10}")
                 for i in range(1, 10, 2)
             ],
@@ -44,7 +44,7 @@ def get_item_stats(
             pl.col("gender").filter(pl.col("positive_feedback") >= 1).mean().alias("mean_gender_positive"),
             pl.col("gender").filter(pl.col("dislike") >= 1).mean().alias("mean_gender_negative"),
             pl.col("age").mean().alias("mean_age"),
-            [
+            *[
                 pl.col("age").quantile(i / 10.0).alias(f"age_q{i * 10}")
                 for i in range(1, 10, 2)
             ],
