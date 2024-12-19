@@ -1025,7 +1025,7 @@ def train(data_dir: Path, save_datasets: bool):
                 # colsample_bylevel=0.8,
                 # subsample=0.8,
                 loss_function=cb_loss_function,
-            ) for random_state in (32, )
+            ) for random_state in (32, 42, 52, 62, 72)
         ])
         cb_model.fit(train_pool, eval_set=val_pool)
 
