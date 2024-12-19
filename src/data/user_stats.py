@@ -12,18 +12,25 @@ def get_user_stats(
     logger.debug("Getting user stats")
     df_result = (
         df
-        .join(items_meta_df.select("item_id", "duration"), how="left", on="item_id")
+        .join(items_meta_df.select("item_id", "source_id", "duration"), how="left", on="item_id")
         .with_columns(
             (pl.col("timespent") / pl.col("duration")).clip(0, max_timespent_ratio).alias("timespent_ratio"),
             pl.col("rn").cum_count(reverse=True).over("user_id").alias("rn_new")
         )
         .group_by("user_id")
         .agg(
+            pl.col("source_id").mode().alias("source_id_mode"),
+            pl.col("source_id").filter(pl.col("like") == 1).mode().alias("liked_source_id_mode"),
             pl.col("like").sum().alias("total_likes"),
             pl.col("dislike").sum().alias("total_dislikes"),
             pl.col("share").sum().alias("total_share"),
             pl.col("bookmarks").sum().alias("total_bookmarks"),
+            pl.col("timespent").sum().alias("total_timespent"),
             pl.col("timespent").mean().alias("avg_timespent"),
+            [
+                pl.col("timespent").quantile(i / 10.0).alias(f"timespent_q{i * 10}")
+                for i in range(1, 10, 2)
+            ],
             pl.col("timespent").filter(pl.col("like") == 1).mean().alias("avg_timespent_like"),
             pl.col("timespent").filter(pl.col("dislike") == 1).mean().alias("avg_timespent_dislike"),
             pl.col("timespent_ratio").mean().alias("avg_timespent_ratio"),
