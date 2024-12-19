@@ -168,13 +168,12 @@ def join_features(
         .with_columns(
             (pl.col("user_source_id_mode") == pl.col("source_id")).alias("is_user_source_id_mode"),
             (pl.col("user_liked_source_id_mode") == pl.col("source_id")).alias("is_liked_source_id_mode"),
-            (pl.col("user_liked_source_id_mode") == pl.col("source_id")).alias("is_liked_source_id_mode"),
         )
     )
 
     return (
         df
-        .drop("source_id", "user_source_id_mode", "user_liked_source_id_mode", "user_liked_source_id_mode")
+        .drop("source_id", "user_source_id_mode", "user_liked_source_id_mode")
         .sort("user_id", "item_id")
     )
 
