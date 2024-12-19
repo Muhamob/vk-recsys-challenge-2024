@@ -24,6 +24,7 @@ from src.models.w2v_model import W2VModel
 from src.models.lightfm_source import LightFMSource, LightFMSourceAdd
 from src.models.ease import EASEModel, EASESourceModel
 from src.models.blending import CBMeanRanker
+from src.models.svd import SVDModel
 from src.data.preprocessing import (
     add_log_weight, 
     load_data, 
@@ -315,10 +316,14 @@ def train(data_dir: Path, save_datasets: bool):
         w2v_n_features = 128
         w2v_n_epochs = 10
 
+        # svd
+        svd_features = 128
+
         als_cache_dir = data_dir / "cache/models/als"
         lfm_cache_dir = data_dir / "cache/models/lightfm"
         ease_cache_dir = data_dir / "cache/models/ease"
         w2v_cache_dir = data_dir / "cache/models/w2v"
+        svd_cache_dir = data_dir / "cache/models/svd"
 
         del datasets["train_df_als"]
         del user_disliked_mean_embeddings
@@ -341,6 +346,8 @@ def train(data_dir: Path, save_datasets: bool):
             "w2v_n_features": w2v_n_features,
             "w2v_n_epochs": w2v_n_epochs,
 
+            "svd_features": svd_features,
+
             "like_weight_item_like": like_weight_item_like,
             "datasets_dir": datasets_dir.as_posix(),
         })
@@ -357,6 +364,12 @@ def train(data_dir: Path, save_datasets: bool):
                 n_epochs=w2v_n_epochs, 
                 predict_col_name="w2v_predict_timespent", 
                 cache_dir=w2v_cache_dir
+            ),
+            "like_book_share": W2VModel(
+                n_features=w2v_n_features, 
+                n_epochs=w2v_n_epochs, 
+                predict_col_name="w2v_predict_like_book_share",
+                cache_dir=w2v_cache_dir,
             ),
         }
 
@@ -440,6 +453,11 @@ def train(data_dir: Path, save_datasets: bool):
                 max_items=ease_max_source_ids,
                 regularization=ease_regularization,
             ),
+            "svd_like": SVDModel(
+                n_features=svd_features,
+                predict_col_name="predict_svd_like",
+                cache_dir=svd_cache_dir,
+            ),
         }
 
         models_like_time_weighted = {
@@ -465,6 +483,11 @@ def train(data_dir: Path, save_datasets: bool):
                 verbose=0,
                 predict_col_name="predict_lfm_item_like_warp_time_weighted",
                 cache_dir=lfm_cache_dir,
+            ),
+            "svd_like_time_weighted": SVDModel(
+                n_features=svd_features,
+                predict_col_name="predict_svd_like_time_weighted",
+                cache_dir=svd_cache_dir,
             ),
         }
 
@@ -548,6 +571,11 @@ def train(data_dir: Path, save_datasets: bool):
                 max_items=ease_max_source_ids,
                 regularization=ease_regularization,
             ),
+            "svd_like_book_share": SVDModel(
+                n_features=svd_features,
+                predict_col_name="predict_svd_like_book_share",
+                cache_dir=svd_cache_dir,
+            ),
         }
 
         # models_like_book_share = {}
@@ -575,6 +603,11 @@ def train(data_dir: Path, save_datasets: bool):
                 loss="warp",
                 predict_col_name="predict_lfm_item_like_book_share_warp_time_weighted",
                 cache_dir=lfm_cache_dir,
+            ),
+            "svd_like_book_share_warp_time_weighted": SVDModel(
+                n_features=svd_features,
+                predict_col_name="predict_svd_like_book_share_warp_time_weighted",
+                cache_dir=svd_cache_dir,
             ),
         }
 
@@ -695,9 +728,35 @@ def train(data_dir: Path, save_datasets: bool):
             del model
 
         matrix_factorization_columns.extend([model.predict_col_name for _, model in models_like_book_share.items()])
+
+        model_w2v = models_w2v["like_book_share"]
+        model_w2v.fit(train_als_like_book_share_item)
+        predicts["train_df_cb"] = (
+            predicts["train_df_cb"]
+            .join(model_w2v.predict_proba(
+                datasets["train_df_cb"].select("user_id", "item_id"), 
+                train_als_like_book_share_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_df"] = (
+            predicts["test_df"]
+            .join(model_w2v.predict_proba(
+                datasets["test_df"].select("user_id", "item_id"), 
+                train_als_like_book_share_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_pairs"] = (
+            predicts["test_pairs"]
+            .join(model_w2v.predict_proba(
+                test_pairs.select("user_id", "item_id"), 
+                train_als_like_book_share_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        matrix_factorization_columns.append(model_w2v.predict_col_name)
         
         del train_als_like_book_share_item
         del models_like_book_share
+        del models_w2v["like_book_share"]
         gc.collect()
 
         for model_name, model in models_like_all.items():
