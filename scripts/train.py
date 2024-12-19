@@ -545,7 +545,7 @@ def train(data_dir: Path, save_datasets: bool):
             ),
         }
 
-        models_like_book_share = {}
+        # models_like_book_share = {}
 
         models_like_book_share_time_weighted = {
             "als_item_like_book_share_time_weighted": ALSModel(
@@ -573,7 +573,7 @@ def train(data_dir: Path, save_datasets: bool):
             ),
         }
 
-        models_like_book_share_time_weighted = {}
+        # models_like_book_share_time_weighted = {}
 
         models_timespent = {
             "als_item_timespent": ALSModel(
