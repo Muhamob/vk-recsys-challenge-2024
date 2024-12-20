@@ -260,6 +260,9 @@ def train(data_dir: Path, save_datasets: bool):
         train_als_like_item_time_weighted = add_log_weight(train_als_like_item)
         train_als_like_book_share_item_time_weighted = add_log_weight(train_als_like_book_share_item)
 
+        get_user2source_stats_cached = get_user2source_stats  # polars_output_cache(data_dir / "cache/models/user2source_stats/")(get_user2source_stats)
+        user2source_stats = get_user2source_stats_cached(datasets["train_df_als"], items_meta_df, min_interactions_threshold=4)
+
         item_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="item_id", positive_threshold_for_ratio=2, min_users_for_stats=5)
         user_stats = get_user_stats(datasets["train_df_als"], items_meta_df=items_meta_df, min_items_for_stats=1)
         
@@ -290,9 +293,6 @@ def train(data_dir: Path, save_datasets: bool):
         train_df_cb_sim_features = get_emb_sim_features(datasets["train_df_cb"], items_meta_df, user_liked_mean_embeddings, user_disliked_mean_embeddings)
         test_df_sim_features = get_emb_sim_features(datasets["train_df_cb"], items_meta_df, user_liked_mean_embeddings, user_disliked_mean_embeddings)
         test_pairs_sim_features = get_emb_sim_features(test_pairs, items_meta_df, user_liked_mean_embeddings, user_disliked_mean_embeddings)
-
-        get_user2source_stats_cached = get_user2source_stats  # polars_output_cache(data_dir / "cache/models/user2source_stats/")(get_user2source_stats)
-        user2source_stats = get_user2source_stats_cached(datasets["train_df_als"], items_meta_df, min_interactions_threshold=4)
 
         # models
         ## ALS
