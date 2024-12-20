@@ -1,4 +1,5 @@
 import polars as pl
+from tqdm.auto import tqdm
 
 from src.logger import logger
 
@@ -102,51 +103,53 @@ def get_user2source_stats(
     df: pl.DataFrame, 
     items_meta_df: pl.DataFrame,
     min_interactions_threshold: int = 10,
+    n_baches: int = 10
 ) -> pl.DataFrame:
     prefix = "user2source_"
 
-    logger.debug("Calculate train interactions")
-    total_interactions = df.group_by("user_id").len().select("user_id", pl.col("len").alias("n_total_interactions"))
-    logger.debug("Done calculate train interactions")
+    def _get_user2source_stats(df: pl.DataFrame) -> pl.DataFrame:
+        total_interactions = df.group_by("user_id").len().select("user_id", pl.col("len").alias("n_total_interactions"))
+        result = (
+            df
+            .join(items_meta_df, on="item_id", how="inner")
+            .with_columns(
+                ((pl.col("like") + pl.col("share") + pl.col("bookmarks")) > 0).alias("is_positive"),
+                (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target"),
+            )
+            .group_by("user_id", "source_id")
+            .agg(
+                pl.first().len().alias("n_interactions"),
 
-    logger.debug("Calculate user 2 source stats")
-    result = (
-        df
-        .join(items_meta_df, on="item_id", how="inner")
-        .with_columns(
-            ((pl.col("like") + pl.col("share") + pl.col("bookmarks")) > 0).alias("is_positive"),
-            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target"),
+                pl.col("is_positive").cast(float).mean().alias("source_acceptance"),
+                pl.col("dislike").cast(float).mean().alias("source_disacceptance"),
+                (pl.col("timespent") / pl.col("duration")).mean().alias("mean_source_timespent_ratio"),
+
+                pl.col("timespent").mean().alias(f"{prefix}avg_timespent"),
+                (pl.col("timespent") / pl.col("duration")).mean().alias(f"{prefix}avg_timespent_ratio"),
+                pl.col("like").mean().alias(f"{prefix}avg_like"),
+                pl.col("dislike").mean().alias(f"{prefix}avg_dislike"),
+                pl.col("share").mean().alias(f"{prefix}avg_share"),
+                pl.col("bookmarks").mean().alias(f"{prefix}avg_bookmarks"),
+                pl.col("target").mean().alias(f"{prefix}avg_target"),
+                pl.col("like").sum().alias(f"{prefix}sum_like"),
+                pl.col("dislike").sum().alias(f"{prefix}sum_dislike"),
+                pl.col("share").sum().alias(f"{prefix}sum_share"),
+                pl.col("bookmarks").sum().alias(f"{prefix}sum_bookmarks"),
+                pl.col("target").sum().alias(f"{prefix}sum_target"),
+                pl.col("source_id").count().alias(f"{prefix}source_interactions"),
+            )
+            .join(total_interactions, on="user_id", how="inner")
+            .with_columns(
+                pl.col("n_interactions").truediv("n_total_interactions").alias("source_perc")
+            )
+            .filter(pl.col("n_interactions") >= min_interactions_threshold)
+            .drop("n_interactions", "target")
         )
-        .group_by("user_id", "source_id")
-        .agg(
-            pl.first().len().alias("n_interactions"),
 
-            pl.col("is_positive").cast(float).mean().alias("source_acceptance"),
-            pl.col("dislike").cast(float).mean().alias("source_disacceptance"),
-            (pl.col("timespent") / pl.col("duration")).mean().alias("mean_source_timespent_ratio"),
+        return result
 
-            pl.col("timespent").mean().alias(f"{prefix}avg_timespent"),
-            (pl.col("timespent") / pl.col("duration")).mean().alias(f"{prefix}avg_timespent_ratio"),
-            pl.col("like").mean().alias(f"{prefix}avg_like"),
-            pl.col("dislike").mean().alias(f"{prefix}avg_dislike"),
-            pl.col("share").mean().alias(f"{prefix}avg_share"),
-            pl.col("bookmarks").mean().alias(f"{prefix}avg_bookmarks"),
-            pl.col("target").mean().alias(f"{prefix}avg_target"),
-            pl.col("like").sum().alias(f"{prefix}sum_like"),
-            pl.col("dislike").sum().alias(f"{prefix}sum_dislike"),
-            pl.col("share").sum().alias(f"{prefix}sum_share"),
-            pl.col("bookmarks").sum().alias(f"{prefix}sum_bookmarks"),
-            pl.col("target").sum().alias(f"{prefix}sum_target"),
-            pl.col("source_id").count().alias(f"{prefix}source_interactions"),
-        )
-        .join(total_interactions, on="user_id", how="inner")
-        .with_columns(
-            pl.col("n_interactions").truediv("n_total_interactions").alias("source_perc")
-        )
-        .filter(pl.col("n_interactions") >= min_interactions_threshold)
-        .drop("n_interactions", "target")
-    )
+    features = []
+    for i in tqdm(range(n_baches)):
+        features.append(_get_user2source_stats(df.filter(pl.col("user_id") % n_baches == i)))
 
-    logger.debug("Done calculate user 2 source stats")
-
-    return result
+    return pl.concat(features)
