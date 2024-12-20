@@ -111,11 +111,11 @@ def get_user2source_stats(
 
     logger.debug("Calculate user 2 source stats")
     result = (
-        df.lazy()
-        .join(items_meta_df.lazy(), on="item_id", how="inner")
+        df
+        .join(items_meta_df, on="item_id", how="inner")
         .with_columns(
             ((pl.col("like") + pl.col("share") + pl.col("bookmarks")) > 0).alias("is_positive"),
-            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
+            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target"),
         )
         .group_by("user_id", "source_id")
         .agg(
@@ -139,13 +139,12 @@ def get_user2source_stats(
             pl.col("target").sum().alias(f"{prefix}sum_target"),
             pl.col("source_id").count().alias(f"{prefix}source_interactions"),
         )
-        .join(total_interactions.lazy(), on="user_id", how="inner")
+        .join(total_interactions, on="user_id", how="inner")
         .with_columns(
             pl.col("n_interactions").truediv("n_total_interactions").alias("source_perc")
         )
         .filter(pl.col("n_interactions") >= min_interactions_threshold)
         .drop("n_interactions", "target")
-        .collect()
     )
 
     logger.debug("Done calculate user 2 source stats")
