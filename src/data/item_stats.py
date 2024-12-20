@@ -113,7 +113,10 @@ def get_user2source_stats(
     result = (
         df.lazy()
         .join(items_meta_df.lazy(), on="item_id", how="inner")
-        .with_columns(((pl.col("like") + pl.col("share") + pl.col("bookmarks")) > 0).alias("is_positive"))
+        .with_columns(
+            ((pl.col("like") + pl.col("share") + pl.col("bookmarks")) > 0).alias("is_positive"),
+            (pl.col("like").cast(int) - pl.col("dislike").cast(int)).alias("target")
+        )
         .group_by("user_id", "source_id")
         .agg(
             pl.first().len().alias("n_interactions"),
@@ -141,7 +144,7 @@ def get_user2source_stats(
             pl.col("n_interactions").truediv("n_total_interactions").alias("source_perc")
         )
         .filter(pl.col("n_interactions") >= min_interactions_threshold)
-        .drop("n_interactions")
+        .drop("n_interactions", "target")
         .collect()
     )
 
