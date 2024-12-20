@@ -143,7 +143,7 @@ def get_user2source_stats(
                 pl.col("n_interactions").truediv("n_total_interactions").alias("source_perc")
             )
             .filter(pl.col("n_interactions") >= min_interactions_threshold)
-            .drop("n_interactions", "target")
+            .drop("n_interactions")
         )
 
         return result
