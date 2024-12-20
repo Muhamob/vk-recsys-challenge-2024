@@ -260,7 +260,7 @@ def train(data_dir: Path, save_datasets: bool):
         train_als_like_item_time_weighted = add_log_weight(train_als_like_item)
         train_als_like_book_share_item_time_weighted = add_log_weight(train_als_like_book_share_item)
 
-        get_user2source_stats_cached = # polars_output_cache(data_dir / "cache/models/user2source_stats/")(get_user2source_stats)
+        # get_user2source_stats_cached = # polars_output_cache(data_dir / "cache/models/user2source_stats/")(get_user2source_stats)
         user2source_stats = get_user2source_stats(datasets["train_df_als"], items_meta_df, min_interactions_threshold=10)
 
         item_stats = get_item_stats(datasets["train_df_als"], items_meta_df, users_meta_df, column="item_id", positive_threshold_for_ratio=2, min_users_for_stats=5)
