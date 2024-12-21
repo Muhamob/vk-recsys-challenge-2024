@@ -127,18 +127,18 @@ def get_user2source_stats(
                 pl.col("timespent").mean().alias(f"{prefix}avg_timespent"),
                 (pl.col("timespent") / pl.col("duration")).mean().alias(f"{prefix}avg_timespent_ratio"),
                 
-                # pl.col("like").mean().alias(f"{prefix}avg_like"),
-                # pl.col("dislike").mean().alias(f"{prefix}avg_dislike"),
-                # pl.col("share").mean().alias(f"{prefix}avg_share"),
-                # pl.col("bookmarks").mean().alias(f"{prefix}avg_bookmarks"),
-                # pl.col("target").mean().alias(f"{prefix}avg_target"),
+                pl.col("like").mean().alias(f"{prefix}avg_like"),
+                pl.col("dislike").mean().alias(f"{prefix}avg_dislike"),
+                pl.col("share").mean().alias(f"{prefix}avg_share"),
+                pl.col("bookmarks").mean().alias(f"{prefix}avg_bookmarks"),
+                pl.col("target").mean().alias(f"{prefix}avg_target"),
 
-                # pl.col("like").sum().alias(f"{prefix}sum_like"),
-                # pl.col("dislike").sum().alias(f"{prefix}sum_dislike"),
-                # pl.col("share").sum().alias(f"{prefix}sum_share"),
-                # pl.col("bookmarks").sum().alias(f"{prefix}sum_bookmarks"),
-                # pl.col("target").sum().alias(f"{prefix}sum_target"),
-                # pl.col("source_id").count().alias(f"{prefix}source_interactions"),
+                pl.col("like").sum().alias(f"{prefix}sum_like"),
+                pl.col("dislike").sum().alias(f"{prefix}sum_dislike"),
+                pl.col("share").sum().alias(f"{prefix}sum_share"),
+                pl.col("bookmarks").sum().alias(f"{prefix}sum_bookmarks"),
+                pl.col("target").sum().alias(f"{prefix}sum_target"),
+                pl.col("source_id").count().alias(f"{prefix}source_interactions"),
             )
             .join(total_interactions, on="user_id", how="inner")
             .with_columns(
