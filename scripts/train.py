@@ -1007,7 +1007,7 @@ def train(data_dir: Path, save_datasets: bool):
             train_df_cb_final.write_parquet("./data/catboost_dataset_train.parquet")
         train_df_cb_final = train_df_cb_final.to_pandas()
 
-        cb_iterations = 5000
+        cb_iterations = 7000
         cb_depth = 6
         cb_loss_function = "YetiRank"
         # cb_loss_function = "QueryCrossEntropy"
