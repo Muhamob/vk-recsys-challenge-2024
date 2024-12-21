@@ -147,3 +147,38 @@ class W2VModel(BaseMatrixFactorization):
         logger.info(f"ALS: Percent of cold pairs: {float(cold_pairs.shape[0]) / pairs_df.shape[0]}")
 
         return pl.concat([hot_pairs_predict, cold_pairs])
+
+
+class W2VSourceModel(W2VModel):
+    def add_item_df(self, items_meta: pl.DataFrame):
+        self.items_meta = items_meta
+        return self
+    
+    def fit(
+        self, 
+        train_df: pl.DataFrame,
+        items_meta_df_flatten: pl.DataFrame | None = None,
+        users_meta_df_flatten: pl.DataFrame | None = None,
+    ):
+        assert self.items_meta is not None
+
+        df = (
+            train_df
+            .join(self.items_meta.select("item_id", "source_id"), how="inner", on="item_id")
+            .select("user_id", pl.col("source_id").alias("item_id"))
+        )
+
+        return super().fit(df, items_meta_df_flatten, users_meta_df_flatten)
+    
+    def predict_proba(self, pairs_df: pl.DataFrame, interactions_df: pl.DataFrame) -> pl.DataFrame:
+        assert self.items_meta is not None
+
+        pairs_df = (
+            pairs_df
+            .join(self.items_meta.select("item_id", "source_id"), on="item_id", how="left")
+            .select("user_id", pl.col("source_id").alias("item_id"), pl.col("item_id").alias("raw_item_id"))
+        )
+
+        interactions_df = interactions_df.join(self.items_meta.select("item_id", "source_id"), on="item_id", how="left").drop("item_id").rename({"source_id": "item_id"})
+
+        return super().predict_proba(pairs_df, interactions_df).select("user_id", pl.col("raw_item_id").alias("item_id"), self.predict_col_name)

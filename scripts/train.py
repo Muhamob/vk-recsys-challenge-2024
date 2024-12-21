@@ -20,7 +20,7 @@ from src.metrics import calc_user_auc
 from src.models.als import ALSModel
 from src.models.als_source import ALSSource
 from src.models.lightfm import LFMModel
-from src.models.w2v_model import W2VModel
+from src.models.w2v_model import W2VModel, W2VSourceModel
 from src.models.lightfm_source import LightFMSource, LightFMSourceAdd
 from src.models.ease import EASEModel, EASESourceModel
 from src.models.blending import CBMeanRanker
@@ -314,7 +314,7 @@ def train(data_dir: Path, save_datasets: bool):
 
         # w2v
         w2v_n_features = 128
-        w2v_n_epochs = 10
+        w2v_n_epochs = 30
 
         # svd
         svd_features = 128
@@ -371,6 +371,12 @@ def train(data_dir: Path, save_datasets: bool):
                 predict_col_name="w2v_predict_like_book_share",
                 cache_dir=w2v_cache_dir,
             ),
+            "like_source": W2VSourceModel(
+                n_features=w2v_n_features, 
+                n_epochs=w2v_n_epochs, 
+                predict_col_name="w2v_predict_like_source",
+                cache_dir=w2v_cache_dir,
+            )
         }
 
         models_like = {
@@ -647,31 +653,32 @@ def train(data_dir: Path, save_datasets: bool):
             "test_pairs": test_pairs.select("user_id", "item_id"),
         }
 
-        for model_name, model in models_like.items():
-            print(model_name)
-            model.fit(train_als_like_item)
-            model.cold_predict = None
+        matrix_factorization_columns = []
 
-            predict_proba_fn = lambda x: model.predict_proba(x) if "ease" not in model_name else model.predict_proba(x, train_als_like_item)
-
-            predicts["train_df_cb"] = (
-                predicts["train_df_cb"]
-                .join(predict_proba_fn(datasets["train_df_cb"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
-            )
-
-            predicts["test_df"] = (
-                predicts["test_df"]
-                .join(predict_proba_fn(datasets["test_df"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
-            )
-
-            predicts["test_pairs"] = (
-                predicts["test_pairs"]
-                .join(predict_proba_fn(test_pairs.select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
-            )
-
-            del model
-        
-        matrix_factorization_columns = [model.predict_col_name for _, model in models_like.items()]
+        model_w2v = models_w2v["like_source"].add_item_df(items_meta_df).fit(train_als_like_item)
+        predicts["train_df_cb"] = (
+            predicts["train_df_cb"]
+            .join(model_w2v.predict_proba(
+                datasets["train_df_cb"].select("user_id", "item_id"), 
+                train_als_like_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_df"] = (
+            predicts["test_df"]
+            .join(model_w2v.predict_proba(
+                datasets["test_df"].select("user_id", "item_id"), 
+                train_als_like_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        predicts["test_pairs"] = (
+            predicts["test_pairs"]
+            .join(model_w2v.predict_proba(
+                test_pairs.select("user_id", "item_id"), 
+                train_als_like_item
+            ), how="left", on=["user_id", "item_id"])
+        )
+        matrix_factorization_columns.append(model_w2v.predict_col_name)
+        del models_w2v["like_source"]
 
         model_w2v = models_w2v["like"]
         model_w2v.fit(train_als_like_item)
@@ -697,10 +704,36 @@ def train(data_dir: Path, save_datasets: bool):
             ), how="left", on=["user_id", "item_id"])
         )
         matrix_factorization_columns.append(model_w2v.predict_col_name)
+        del models_w2v["like"]
+
+        for model_name, model in models_like.items():
+            print(model_name)
+            model.fit(train_als_like_item)
+            model.cold_predict = None
+
+            predict_proba_fn = lambda x: model.predict_proba(x) if "ease" not in model_name else model.predict_proba(x, train_als_like_item)
+
+            predicts["train_df_cb"] = (
+                predicts["train_df_cb"]
+                .join(predict_proba_fn(datasets["train_df_cb"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            predicts["test_df"] = (
+                predicts["test_df"]
+                .join(predict_proba_fn(datasets["test_df"].select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            predicts["test_pairs"] = (
+                predicts["test_pairs"]
+                .join(predict_proba_fn(test_pairs.select("user_id", "item_id")), how="left", on=["user_id", "item_id"])
+            )
+
+            del model
+        
+        matrix_factorization_columns.extend([model.predict_col_name for _, model in models_like.items()])
 
         del train_als_like_item
         del models_like
-        del models_w2v["like"]
         gc.collect()
 
         for model_name, model in models_like_book_share.items():
